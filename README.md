@@ -41,7 +41,8 @@ idf.py build flash monitor
 ## Статус
 
 Прошивка собирается и работает на реальном устройстве
-(Freenove ESP32-S3 2.8" Capacitive Touch Display).
+(Freenove ESP32-S3 2.8" Capacitive Touch Display). Последняя
+проверенная на железе версия — **v4.9**.
 
 ## Лицензия и благодарности
 

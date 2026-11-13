@@ -3,10 +3,10 @@
 Complete context dump so another model/developer can continue the project.
 Read fully before making changes.
 
-Current state: **v4.9** (git tag `v4.9`). v4.3 AND v4.4 CONFIRMED WORKING
-on real hardware by the user - so everything up to and including the RPG,
-equipment, home interiors, encounters and the babble voice runs on the
-device. White-screen memory bug was fixed in v2.9.
+Current state: **v4.9** CONFIRMED WORKING on real hardware by the user -
+so everything up to and including idle dimming, dungeon runs, mana potions
+and equipment selling runs on the device. White-screen memory bug was fixed
+in v2.9.
 
 ---
 
@@ -392,8 +392,6 @@ Done in v3.5:
   down to y=26/42; rows below freed for the scene.
 
 PENDING (next):
-- Hardware: v4.4 is the last user-confirmed build; verify v4.5+ as they
-  ship (idle dimming, then dungeons and the economy work).
 - Run the checks once against REAL LVGL headers (VAIWU_LVGL_DIR=
   <idf-project>/managed_components/lvgl__lvgl) - the sandbox only has the local stub.
 - Flash budget: the v4.2 binary was 4.26 MB and BROKE the 4 MB partition
