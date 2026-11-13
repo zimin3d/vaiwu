@@ -86,6 +86,9 @@ enum class Str : std::uint8_t {
     OtaRow, OtaTitle, OtaChecking, OtaUpToDateFmt /* printf: version */,
     OtaAvailFmt /* printf: version */, OtaDownloadingFmt /* printf: percent */,
     OtaReady, OtaFailed, OtaUpdateBtn, OtaRebootBtn,
+    RpgYouStunned, RpgYouPoisoned, RpgPoisonTickFmt /* printf: dmg */,
+    RpgFoePoisoned, RpgFoePoisonTickFmt /* printf: dmg */,
+    RpgFoeRegenFmt /* printf: hp */, RpgFoeStealFmt /* printf: gold */,
     Count_,
 };
 

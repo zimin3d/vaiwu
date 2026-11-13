@@ -97,6 +97,9 @@ constexpr const char* kEn[kCount] = {
     "Up to date (v%s)", "New version: %s",
     "Flashing... %d%%", "Done! Reboot to finish.",
     "Update failed. Try again?", "UPDATE", "REBOOT",
+    "Stunned! Turn lost", " poisoned!", " poison -%d",
+    " +POISON!", " foe poison -%d",
+    " regen +%d", " stole %dg!",
 };
 
 constexpr const char* kRu[kCount] = {
@@ -191,6 +194,9 @@ constexpr const char* kRu[kCount] = {
     "Уже последняя (v%s)", "Новая версия: %s",
     "Прошиваю... %d%%", "Готово! Перезагрузите.",
     "Не вышло. Повторить?", "ОБНОВИТЬ", "ПЕРЕЗАПУСК",
+    "Оглушение! Ход потерян", " отравление!", " яд -%d",
+    " +ЯД!", " яд по врагу -%d",
+    " реген +%d", " кража %d з!",
 };
 } // namespace
 

@@ -465,6 +465,185 @@ void testSaveV3RoundTripAndV2Compat()
     CHECK(old.rpg().potions == 1);
 }
 
+
+void testPoisonTicksAndFaints()
+{
+    // Poison set directly: ticks at the start of the pet's turn, wears off.
+    RpgProgress p;
+    normalizeRpg(CharacterId::Aoi, p);
+    p.poisonTurns = 2;
+    const int hpBefore = p.hp;
+    Foe foe = spawnFoe(1, 7U);
+    const TurnResult r = battleTurn(CharacterId::Aoi, p, foe, RpgAction::Potion, 7U);
+    CHECK(r.poisonDmg == 2 + foe.level / 2);
+    CHECK(p.poisonTurns == 1);
+    CHECK(p.hp == hpBefore - r.poisonDmg + r.healed - r.foeDmg); // the foe still swings
+
+    // A lethal tick is a gentle faint like any other defeat.
+    RpgProgress dying;
+    normalizeRpg(CharacterId::Aoi, dying);
+    dying.poisonTurns = 1;
+    dying.hp = 1;
+    Foe foe2 = spawnFoe(1, 9U);
+    const TurnResult dead = battleTurn(CharacterId::Aoi, dying, foe2, RpgAction::Attack, 9U);
+    CHECK(dead.defeat);
+    CHECK(dying.hp >= 1); // wakes up at ~30%
+    CHECK(dying.poisonTurns == 0);
+}
+
+void testStunWastesTheAction()
+{
+    RpgProgress p;
+    normalizeRpg(CharacterId::Aoi, p);
+    p.stunTurns = 1;
+    Foe foe = spawnFoe(1, 11U);
+    const int foeHp = foe.hp;
+    const TurnResult r = battleTurn(CharacterId::Aoi, p, foe, RpgAction::Attack, 11U);
+    CHECK(r.playerStunned);
+    CHECK(r.playerDmg == 0);
+    CHECK(foe.hp == foeHp); // she never swung
+    CHECK(p.stunTurns == 0);
+}
+
+void testMonsterTricks()
+{
+    bool slimePoisoned = false;
+    bool batStunned = false;
+    bool foxStole = false;
+    bool shroomRegen = false;
+    for (std::uint32_t rng = 1; rng < 400; ++rng) {
+        RpgProgress p;
+        normalizeRpg(CharacterId::Hina, p);
+        Foe foe = spawnFoe(1, rng);
+        foe.hpMax = foe.hp = 500; // survive the hit so the counterattack happens
+        if (!slimePoisoned) {
+            foe.kind = MonsterKind::Slime;
+            const TurnResult r = battleTurn(CharacterId::Hina, p, foe, RpgAction::Attack, rng);
+            if (r.poisoned) {
+                slimePoisoned = true;
+                CHECK(p.poisonTurns == kPoisonTurns);
+            }
+        }
+        if (!batStunned) {
+            foe.kind = MonsterKind::Bat;
+            const TurnResult r = battleTurn(CharacterId::Hina, p, foe, RpgAction::Attack, rng);
+            if (r.stunned) {
+                batStunned = true;
+                CHECK(p.stunTurns == 1);
+            }
+        }
+        if (!foxStole) {
+            foe.kind = MonsterKind::Fox;
+            const TurnResult r = battleTurn(CharacterId::Hina, p, foe, RpgAction::Attack, rng);
+            if (r.goldStolen > 0) {
+                foxStole = true;
+                CHECK(r.goldStolen == 1 + foe.level);
+            }
+        }
+        if (!shroomRegen) {
+            foe.kind = MonsterKind::Shroom;
+            foe.hp = 100;
+            const TurnResult r = battleTurn(CharacterId::Hina, p, foe, RpgAction::Potion, rng);
+            if (r.foeRegen > 0) {
+                shroomRegen = true;
+                CHECK(foe.hp == 100 + r.foeRegen);
+            }
+        }
+        if (slimePoisoned && batStunned && foxStole && shroomRegen) {
+            break;
+        }
+    }
+    CHECK(slimePoisoned);
+    CHECK(batStunned);
+    CHECK(foxStole);
+    CHECK(shroomRegen);
+}
+
+void testGhostPiercesGuard()
+{
+    int guardedHit = 0;
+    int piercedHit = 0;
+    for (std::uint32_t rng = 1; rng < 60 && (guardedHit == 0 || piercedHit == 0); ++rng) {
+        RpgProgress a;
+        normalizeRpg(CharacterId::Kolobok, a);
+        a.guardTurns = 1;
+        Foe foe = spawnFoe(1, rng);
+        foe.hpMax = foe.hp = 500;
+        foe.kind = MonsterKind::Slime;
+        const TurnResult ra = battleTurn(CharacterId::Kolobok, a, foe, RpgAction::Attack, rng);
+        if (ra.foeDmg > 0) {
+            guardedHit = ra.foeDmg;
+        }
+        RpgProgress b;
+        normalizeRpg(CharacterId::Kolobok, b);
+        b.guardTurns = 1;
+        Foe foeB = spawnFoe(1, rng);
+        foeB.hpMax = foeB.hp = 500;
+        foeB.kind = MonsterKind::Ghost;
+        const TurnResult rb = battleTurn(CharacterId::Kolobok, b, foeB, RpgAction::Attack, rng);
+        if (rb.foeDmg > 0) {
+            piercedHit = rb.foeDmg;
+        }
+    }
+    CHECK(guardedHit > 0 && piercedHit > 0);
+    CHECK(piercedHit > guardedHit); // the ghost ignores the crust
+}
+
+void testWindDaggerPoisons()
+{
+    bool applied = false;
+    for (std::uint32_t rng = 1; rng < 200 && !applied; ++rng) {
+        RpgProgress p;
+        normalizeRpg(CharacterId::Hina, p);
+        grantEquip(p, EquipItem::WindDagger);
+        Foe foe = spawnFoe(1, rng);
+        foe.hpMax = foe.hp = 500;
+        const TurnResult r = battleTurn(CharacterId::Hina, p, foe, RpgAction::Attack, rng);
+        if (r.foePoisoned) {
+            applied = true;
+            CHECK(foe.poisonTurns == kPoisonTurns);
+        }
+    }
+    CHECK(applied);
+
+    // Golem is immune even with the dagger.
+    for (std::uint32_t rng = 1; rng < 300; ++rng) {
+        RpgProgress p;
+        normalizeRpg(CharacterId::Hina, p);
+        grantEquip(p, EquipItem::WindDagger);
+        Foe foe = spawnFoe(1, rng);
+        foe.hpMax = foe.hp = 500;
+        foe.kind = MonsterKind::Golem;
+        const TurnResult r = battleTurn(CharacterId::Hina, p, foe, RpgAction::Attack, rng);
+        CHECK(!r.foePoisoned);
+        CHECK(foe.poisonTurns == 0);
+    }
+
+    // Without the dagger a plain attack never poisons.
+    for (std::uint32_t rng = 1; rng < 100; ++rng) {
+        RpgProgress p;
+        normalizeRpg(CharacterId::Hina, p);
+        Foe foe = spawnFoe(1, rng);
+        foe.hpMax = foe.hp = 500;
+        const TurnResult r = battleTurn(CharacterId::Hina, p, foe, RpgAction::Attack, rng);
+        CHECK(!r.foePoisoned);
+    }
+}
+
+void testFoePoisonCanKill()
+{
+    RpgProgress p;
+    normalizeRpg(CharacterId::Aoi, p);
+    Foe foe = spawnFoe(1, 13U);
+    foe.hp = 1;
+    foe.poisonTurns = 1;
+    // The player does nothing lethal; the venom finishes the fight.
+    const TurnResult r = battleTurn(CharacterId::Aoi, p, foe, RpgAction::Potion, 13U);
+    CHECK(r.foePoisonDmg > 0);
+    CHECK(r.victory);
+    CHECK(r.xpGained == foe.xpReward);
+}
+
 } // namespace
 
 int main()
@@ -481,6 +660,12 @@ int main()
     testSellingAndManaPotions();
     testStatsFeedBackIntoLifeSim();
     testSaveV3RoundTripAndV2Compat();
+    testPoisonTicksAndFaints();
+    testStunWastesTheAction();
+    testMonsterTricks();
+    testGhostPiercesGuard();
+    testWindDaggerPoisons();
+    testFoePoisonCanKill();
 
     if (failures == 0) {
         std::printf("ALL RPG TESTS PASSED\n");

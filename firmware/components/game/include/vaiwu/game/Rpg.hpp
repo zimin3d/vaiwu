@@ -71,6 +71,10 @@ struct RpgProgress {
     int potions{1};     // HP potions carried (bought in the shop)
     int mpPotions{0};   // mana potions (restore MP mid-fight)
     int guardTurns{0};  // Guard skill: foe damage is halved while > 0
+    // Battle-transient statuses (slime poison / bat stun). Cleared when the
+    // fight ends; never serialized, so the save format is unchanged.
+    int poisonTurns{0};
+    int stunTurns{0};
     std::uint32_t equipOwned{0};                 // bitmask by EquipItem
     int equipped[kEquipSlotCount]{-1, -1, -1};   // EquipItem index or -1
 };
@@ -127,7 +131,16 @@ struct Foe {
     int atk{1};
     int xpReward{0};
     int goldReward{0};
+    int poisonTurns{0}; // Wind Dagger venom; golems are immune
 };
+
+// Status mechanics (see battleTurn): poison ticks at the start of the
+// afflicted side's turn; stun wastes the pet's action (the foe still swings).
+constexpr int kPoisonTurns = 3;
+constexpr int kDaggerPoisonPct = 25; // Wind Dagger equipped, on Attack
+constexpr int kSlimePoisonPct = 25;  // on a landed slime hit
+constexpr int kBatStunPct = 20;      // on a landed bat hit
+constexpr int kFoxStealPct = 25;     // on a landed fox hit
 
 // A "weak monster outside the gates": level petLevel or petLevel-1.
 [[nodiscard]] Foe spawnFoe(int petLevel, std::uint32_t rng);
@@ -183,6 +196,15 @@ struct TurnResult {
     bool runFailed{false};
     int foeDmg{0};
     bool foeMissed{false};
+    // Status events (narrated by the battle log):
+    int poisonDmg{0};      // tick on the pet at the start of her turn
+    bool playerStunned{false}; // bat stun: the action was wasted
+    bool foePoisoned{false};   // Wind Dagger applied venom this turn
+    int foePoisonDmg{0};   // tick on the foe before its counterattack
+    int foeRegen{0};       // shroom regrowth
+    bool poisoned{false};  // slime applied poison to the pet
+    bool stunned{false};   // bat applied stun to the pet (next turn)
+    int goldStolen{0};     // fox snatched gold; caller caps by actual coins
     bool victory{false};
     bool defeat{false};     // hp reached 0: pet faints, no pet death
     int xpGained{0};

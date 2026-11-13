@@ -1422,9 +1422,11 @@ void onRpgAction(lv_event_t* e)
         static_cast<game::RpgAction>(index), static_cast<std::uint32_t>(std::rand()));
 
     // Narrate the turn on (up to) two lines.
-    char line1[80] = "";
-    char line2[80] = "";
-    if (r.noMp) {
+    char line1[112] = "";
+    char line2[112] = "";
+    if (r.playerStunned) {
+        std::snprintf(line1, sizeof(line1), "%s", tr_(Str::RpgYouStunned));
+    } else if (r.noMp) {
         std::snprintf(line1, sizeof(line1), "%s", tr_(Str::RpgNoMp));
     } else if (r.noPotion) {
         std::snprintf(line1, sizeof(line1), "%s", tr_(Str::RpgNoPotion));
@@ -1462,6 +1464,10 @@ void onRpgAction(lv_event_t* e)
                 std::snprintf(extra, sizeof(extra), tr_(Str::RpgSnagFmt), r.snagged);
                 std::strncat(line1, extra, sizeof(line1) - std::strlen(line1) - 1);
             }
+            if (r.foePoisoned) { // the Wind Dagger's venom kicks in
+                std::strncat(line1, tr_(Str::RpgFoePoisoned),
+                    sizeof(line1) - std::strlen(line1) - 1);
+            }
         }
         if (r.victory) {
             std::snprintf(line2, sizeof(line2), tr_(Str::RpgWinFmt), r.xpGained, r.goldGained);
@@ -1474,7 +1480,37 @@ void onRpgAction(lv_event_t* e)
             std::snprintf(line2, sizeof(line2), tr_(Str::RpgFoeHitFmt), r.foeDmg);
         }
     }
-    char log[168];
+    // Status events ride along on the second line (they belong to the foe's
+    // phase, except the pet's own poison tick - still shown there for space).
+    if (!r.noMp && !r.noPotion && !r.escaped) {
+        auto append2 = [&](const char* text) {
+            std::strncat(line2, text, sizeof(line2) - std::strlen(line2) - 1);
+        };
+        char part[48];
+        if (r.poisoned) { // the slime got through her guard
+            append2(tr_(Str::RpgYouPoisoned));
+        }
+        if (r.poisonDmg > 0) {
+            std::snprintf(part, sizeof(part), tr_(Str::RpgPoisonTickFmt), r.poisonDmg);
+            append2(part);
+        }
+        if (r.foePoisonDmg > 0) {
+            std::snprintf(part, sizeof(part), tr_(Str::RpgFoePoisonTickFmt), r.foePoisonDmg);
+            append2(part);
+        }
+        if (r.foeRegen > 0) {
+            std::snprintf(part, sizeof(part), tr_(Str::RpgFoeRegenFmt), r.foeRegen);
+            append2(part);
+        }
+        if (r.goldStolen > 0) { // the fox pickpockets mid-fight
+            static_cast<void>(pet.spendCoins(static_cast<std::uint32_t>(
+                std::min(static_cast<int>(pet.coins()), r.goldStolen))));
+            std::snprintf(part, sizeof(part), tr_(Str::RpgFoeStealFmt), r.goldStolen);
+            append2(part);
+        }
+    }
+
+    char log[288];
     std::snprintf(log, sizeof(log), line2[0] != '\0' ? "%s\n%s" : "%s", line1, line2);
     lv_label_set_text(g->rpgLog, log);
 

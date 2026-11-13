@@ -293,8 +293,49 @@ TurnResult battleTurn(CharacterId id, RpgProgress& p, Foe& foe, RpgAction action
     normalizeRpg(id, p);
     const RpgStats total = totalStats(id, p);
 
+    auto applyVictory = [&]() {
+        p.guardTurns = 0; // the fight is over
+        p.poisonTurns = 0;
+        p.stunTurns = 0;
+        out.victory = true;
+        out.xpGained = foe.xpReward;
+        out.goldGained = foe.goldReward;
+        p.xp += foe.xpReward;
+        while (p.xp >= xpForNext(p.level) && p.level < 99) {
+            p.xp -= xpForNext(p.level);
+            ++p.level;
+            p.statPoints += kPointsPerLevel;
+            ++out.levelsGained;
+        }
+        if (out.levelsGained > 0) {
+            // Level-up perk: fully rested for the next fight.
+            p.hp = hpMaxFor(id, p);
+            p.mp = mpMaxFor(id, p);
+        }
+    };
+
+    // ---- pet status ticks (poison/stun from earlier turns) -------------------
+    if (p.poisonTurns > 0) {
+        const int tick = 2 + foe.level / 2;
+        p.hp = std::max(0, p.hp - tick);
+        out.poisonDmg = tick;
+        --p.poisonTurns;
+        if (p.hp <= 0) { // the poison finishes what the foe started
+            p.poisonTurns = 0;
+            p.stunTurns = 0;
+            out.defeat = true;
+            out.goldLostHint = 5 + foe.level * 2;
+            p.hp = std::max(1, hpMaxFor(id, p) * 3 / 10); // wakes up at ~30%
+            return out;
+        }
+    }
+    if (p.stunTurns > 0) {
+        --p.stunTurns;
+        out.playerStunned = true; // the action is wasted, the foe still swings
+    }
+
     // ---- player action -----------------------------------------------------
-    switch (action) {
+    if (!out.playerStunned) switch (action) {
     case RpgAction::Attack: {
         const int base = 3 + total.str * 2;
         int dmg = base + static_cast<int>(roll(state) % 3U); // small variance
@@ -305,6 +346,13 @@ TurnResult battleTurn(CharacterId id, RpgProgress& p, Foe& foe, RpgAction action
         }
         foe.hp = std::max(0, foe.hp - dmg);
         out.playerDmg = dmg;
+        // Wind Dagger: a poisoned blade (golem stone shrugs it off).
+        if (foe.hp > 0 && foe.kind != MonsterKind::Golem
+            && p.equipped[static_cast<int>(EquipSlot::Weapon)] == static_cast<int>(EquipItem::WindDagger)
+            && static_cast<int>(roll(state) % 100U) < kDaggerPoisonPct) {
+            foe.poisonTurns = kPoisonTurns;
+            out.foePoisoned = true;
+        }
         break;
     }
     case RpgAction::Skill: {
@@ -401,6 +449,8 @@ TurnResult battleTurn(CharacterId id, RpgProgress& p, Foe& foe, RpgAction action
     default: {
         const int chance = clampInt(50 + total.agi * 3 - foe.level * 2, 20, 90);
         if (static_cast<int>(roll(state) % 100U) < chance) {
+            p.poisonTurns = 0; // leaving the fight shakes the statuses off
+            p.stunTurns = 0;
             out.escaped = true;
             return out;
         }
@@ -410,24 +460,27 @@ TurnResult battleTurn(CharacterId id, RpgProgress& p, Foe& foe, RpgAction action
     }
 
     // ---- victory? -----------------------------------------------------------
-    if (foe.hp <= 0) {
-        p.guardTurns = 0; // the fight is over
-        out.victory = true;
-        out.xpGained = foe.xpReward;
-        out.goldGained = foe.goldReward;
-        p.xp += foe.xpReward;
-        while (p.xp >= xpForNext(p.level) && p.level < 99) {
-            p.xp -= xpForNext(p.level);
-            ++p.level;
-            p.statPoints += kPointsPerLevel;
-            ++out.levelsGained;
-        }
-        if (out.levelsGained > 0) {
-            // Level-up perk: fully rested for the next fight.
-            p.hp = hpMaxFor(id, p);
-            p.mp = mpMaxFor(id, p);
-        }
+    if (!out.playerStunned && foe.hp <= 0) {
+        applyVictory();
         return out;
+    }
+
+    // ---- foe status ticks ---------------------------------------------------
+    // (!out.foePoisoned: venom applied this very turn starts ticking the next)
+    if (foe.poisonTurns > 0 && !out.foePoisoned) { // the Wind Dagger's venom does its work
+        const int tick = 2 + p.level / 2;
+        foe.hp = std::max(0, foe.hp - tick);
+        out.foePoisonDmg = tick;
+        --foe.poisonTurns;
+        if (foe.hp <= 0) {
+            applyVictory();
+            return out;
+        }
+    }
+    if (foe.kind == MonsterKind::Shroom && foe.hp < foe.hpMax) {
+        const int healed = std::min(foe.hpMax - foe.hp, std::max(1, foe.hpMax * 5 / 100));
+        foe.hp += healed;
+        out.foeRegen = healed;
     }
 
     // ---- foe's counterattack --------------------------------------------------
@@ -436,7 +489,8 @@ TurnResult battleTurn(CharacterId id, RpgProgress& p, Foe& foe, RpgAction action
         out.foeMissed = true;
     } else {
         int dmg = foe.atk + static_cast<int>(roll(state) % 3U);
-        if (p.guardTurns > 0) {
+        // The ghost walks straight through Kolobok's crust.
+        if (p.guardTurns > 0 && foe.kind != MonsterKind::Ghost) {
             dmg = (dmg + 1) / 2; // Kolobok's crust: half damage, rounded up
         }
         p.hp = std::max(0, p.hp - dmg);
@@ -445,9 +499,23 @@ TurnResult battleTurn(CharacterId id, RpgProgress& p, Foe& foe, RpgAction action
             --p.guardTurns; // the crust wears off after taking the swing
         }
         if (p.hp <= 0) {
+            p.poisonTurns = 0;
+            p.stunTurns = 0;
             out.defeat = true;
             out.goldLostHint = 5 + foe.level * 2;
             p.hp = std::max(1, hpMaxFor(id, p) * 3 / 10); // wakes up at ~30%
+        } else {
+            // On-hit monster tricks (one roll serves every kind).
+            const int trick = static_cast<int>(roll(state) % 100U);
+            if (foe.kind == MonsterKind::Slime && trick < kSlimePoisonPct) {
+                p.poisonTurns = kPoisonTurns;
+                out.poisoned = true;
+            } else if (foe.kind == MonsterKind::Bat && trick < kBatStunPct) {
+                p.stunTurns = 1;
+                out.stunned = true;
+            } else if (foe.kind == MonsterKind::Fox && trick < kFoxStealPct) {
+                out.goldStolen = 1 + foe.level; // caller caps by actual coins
+            }
         }
     }
     return out;

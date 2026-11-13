@@ -10,7 +10,9 @@ companion in one pocket device with a 2.8" touch display.
 
 - 7 characters with distinct personalities, voices and battle skills
 - Live needs: hunger, happiness, energy, discipline, weight; sickness, sleep, death
-- Mini-RPG: turn-based battles, 5 stats, levels, equipment, dungeons with bosses
+- Mini-RPG: turn-based battles, 5 stats, levels, equipment, dungeons with bosses,
+  status effects and monster tricks (slime poison, bat stun, fox pickpocketing,
+  ghost pierces guard, shroom regen)
 - AI assistant: LLM chat, voice input, weather, timers, alarms, jokes —
   plus an offline keyword fallback that works with no keys and no network
 - She talks: an offline chiptune "babble" voice with a per-character timbre,
