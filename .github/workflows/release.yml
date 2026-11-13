@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build firmware
+        run: |
+          . ${IDF_PATH:-/opt/esp/idf}/export.sh
+          cd firmware
+          idf.py set-target esp32s3
+          idf.py build
+      - name: Package
+        run: |
+          V=${GITHUB_REF_NAME}
+          mkdir -p dist
+          cp firmware/build/tamagotchi_vaiwu.bin dist/vaiwu-$V.wfu
+          cp firmware/build/bootloader/bootloader.bin dist/
+          cp firmware/build/partition_table/partition-table.bin dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ github.ref_name }}
+          path: dist/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware-${{ github.ref_name }}
+          path: dist/
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          body: |
+            ## Tamagotchi Vaiwu ${{ github.ref_name }}
+
+            `vaiwu-${{ github.ref_name }}.wfu` — образ приложения (будущий формат OTA).
+
+            ### Полная прошивка через esptool
+            ```
+            esptool.py --chip esp32s3 write_flash \
+              0x0 bootloader.bin \
+              0x8000 partition-table.bin \
+              0x10000 vaiwu-${{ github.ref_name }}.wfu
+            ```
+
+            Сборка из CI (espressif/idf:v5.5.4), конфигурация по умолчанию —
+            полностью оффлайн. Wi-Fi настраивается на устройстве; ключи
+            OpenRouter/STT/TTS — только через menuconfig и пересборку.
