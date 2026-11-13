@@ -1,0 +1,16 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  host-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host checks (unit tests + syntax-check ESP branches)
+        working-directory: firmware
+        run: |
+          python3 tools/run_host_checks.py
