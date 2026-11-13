@@ -1,0 +1,16 @@
+/* Host-check stub: project Kconfig values used by chat/main. */
+#pragma once
+#define CONFIG_VAIWU_WIFI_SSID "test-ssid"
+#define CONFIG_VAIWU_WIFI_PASSWORD "test-pass"
+#define CONFIG_VAIWU_OPENROUTER_API_KEY "test-key"
+#define CONFIG_VAIWU_OPENROUTER_MODEL "test-model"
+#define CONFIG_VAIWU_STT_API_KEY "test-stt-key"
+#define CONFIG_VAIWU_STT_URL "https://example.com/v1/audio/transcriptions"
+#define CONFIG_VAIWU_STT_MODEL "whisper-1"
+#define CONFIG_VAIWU_WEATHER_CITY "Moscow"
+#define CONFIG_VAIWU_WEATHER_LAT "55.7558"
+#define CONFIG_VAIWU_WEATHER_LON "37.6173"
+#define CONFIG_VAIWU_TTS_URL "https://example.com/v1/audio/speech"
+#define CONFIG_VAIWU_TTS_API_KEY "test-tts-key"
+#define CONFIG_VAIWU_TTS_MODEL "tts-1"
+#define CONFIG_VAIWU_TTS_VOICE "alloy"

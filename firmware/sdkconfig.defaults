@@ -1,0 +1,46 @@
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+CONFIG_COMPILER_CXX_EXCEPTIONS=n
+CONFIG_COMPILER_CXX_RTTI=n
+
+# Real flash size of the freenove-esp32s3-display-2.8-lcd board (16MB chip).
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+
+# Custom partition table: 8MB factory app (see partitions.csv).
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
+
+# -Os: the default -Og triggers a known GCC ICE in esp_lcd_panel_rgb.c with
+# the xtensa-esp32s3 toolchain (documented in xiaozhi-esp32).
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+
+# LVGL fonts used by the Vaiwu UI (only 14 is enabled by default).
+CONFIG_LV_FONT_MONTSERRAT_12=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_16=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+CONFIG_LV_FONT_MONTSERRAT_24=y
+
+# --- Memory fix for the large multi-screen UI (see white-screen bug) ---------
+# LVGL's built-in allocator uses a fixed pool (LV_MEM_SIZE, 64 KB) separate
+# from the system heap. Seven full screens overflow that 64 KB pool while
+# ~200 KB of internal RAM sits unused, so lv_malloc() stalls -> the main task
+# spins -> Task WDT -> white screen. Switch LVGL to the standard malloc/free
+# so it draws from the whole heap (internal + PSRAM) instead.
+CONFIG_LV_USE_BUILTIN_MALLOC=n
+CONFIG_LV_USE_CLIB_MALLOC=y
+
+# Enable the board's 8 MB octal PSRAM (Freenove ESP32-S3 N16R8) as extra
+# headroom. IGNORE_NOTFOUND keeps the board bootable even if a particular
+# unit has no PSRAM (it then just runs on internal RAM, still fixed by the
+# LVGL-malloc change above). WIFI_LRU moves Wi-Fi buffers to PSRAM, freeing
+# internal RAM. ALWAYSINTERNAL lowered so LVGL objects may live in PSRAM.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LRU=y
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=256

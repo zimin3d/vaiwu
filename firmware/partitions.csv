@@ -1,0 +1,12 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+# 16MB flash chip on freenove-esp32s3-display-2.8-lcd (confirmed by the
+# board bring-up from xiaozhi-esp32).
+#
+# factory grew 4M -> 8M in v4.3: the embedded art (7x7 character sprites in
+# RGB565A8, 6 monsters, 8 backdrops) pushed the v4.2 binary to 4.26 MB and
+# the build failed with "app partition is too small ... overflow 0x10c50".
+# The chip has 16 MB, so 8 MB app + the rest free is comfortable; NVS keeps
+# its offset and size, so existing saves survive the re-flash.
+nvs,      data, nvs,     0x9000,  0x6000,
+phy_init, data, phy,     0xf000,  0x1000,
+factory,  app,  factory, 0x10000, 8M,

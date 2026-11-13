@@ -1,0 +1,13 @@
+# Token-checking gateway. Only requests carrying the exact bearer token are
+# forwarded to whisper.cpp (which is not exposed to the host at all). The
+# firmware sends "Authorization: Bearer <VAIWU_STT_API_KEY>", so set
+# VAIWU_STT_API_KEY on the device equal to STT_TOKEN here.
+:8080 {
+	@authorized header Authorization "Bearer {$STT_TOKEN}"
+	handle @authorized {
+		reverse_proxy whisper:8080
+	}
+	handle {
+		respond "Unauthorized" 401
+	}
+}

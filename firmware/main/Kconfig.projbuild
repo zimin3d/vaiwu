@@ -1,0 +1,86 @@
+menu "Tamagotchi Vaiwu Configuration"
+
+    config VAIWU_WIFI_SSID
+        string "Wi-Fi SSID"
+        default ""
+        help
+            2.4 GHz network for the neural chat. Leave empty to run fully
+            offline (canned phrases only).
+
+    config VAIWU_WIFI_PASSWORD
+        string "Wi-Fi password"
+        default ""
+
+    config VAIWU_OPENROUTER_API_KEY
+        string "OpenRouter API key"
+        default ""
+        help
+            https://openrouter.ai key for the online chat mode. Leave empty
+            to always use offline phrases.
+
+    config VAIWU_OPENROUTER_MODEL
+        string "OpenRouter model"
+        default "mistralai/mistral-7b-instruct:free"
+
+    config VAIWU_STT_API_KEY
+        string "Speech-to-text API key (voice commands)"
+        default ""
+        help
+            API key for the Whisper transcription endpoint below. Leave empty
+            to disable voice input (the microphone button is then hidden and
+            typing still works). For the default OpenAI endpoint use an
+            OpenAI key (it is a separate service from OpenRouter chat).
+
+    config VAIWU_STT_URL
+        string "Speech-to-text endpoint URL"
+        default "https://api.openai.com/v1/audio/transcriptions"
+
+    config VAIWU_STT_MODEL
+        string "Speech-to-text model"
+        default "whisper-1"
+
+    config VAIWU_WEATHER_CITY
+        string "Weather city name (shown in replies)"
+        default "Moscow"
+
+    config VAIWU_WEATHER_LAT
+        string "Weather latitude"
+        default "55.7558"
+
+    config VAIWU_WEATHER_LON
+        string "Weather longitude"
+        default "37.6173"
+
+    config VAIWU_TTS_URL
+        string "Text-to-speech endpoint URL (voice replies)"
+        default ""
+        help
+            OpenAI-compatible /v1/audio/speech endpoint that returns raw PCM16
+            mono. Leave empty to disable spoken replies (text still shows).
+            Works with OpenAI TTS or a self-hosted server (e.g. Piper behind a
+            small adapter) - see server/README.md.
+
+    config VAIWU_TTS_API_KEY
+        string "Text-to-speech API key/token"
+        default ""
+
+    config VAIWU_TTS_MODEL
+        string "Text-to-speech model"
+        default "tts-1"
+
+    config VAIWU_TTS_VOICE
+        string "Text-to-speech voice"
+        default "alloy"
+
+    config VAIWU_ENABLE_WAKEWORD
+        bool "Offline wake word (ESP-SR) - advanced, opt-in"
+        default n
+        help
+            Enable the on-device wake word (WakeNet) so the assistant can be
+            triggered hands-free, then records the command and sends it to
+            the cloud Whisper endpoint above (the hybrid design). This pulls
+            in Espressif's esp-sr component and needs PSRAM plus a model
+            partition - see docs/VOICE.md. Leave OFF for the reliable
+            push-to-talk button (hold the mic icon on the chat screen).
+
+endmenu

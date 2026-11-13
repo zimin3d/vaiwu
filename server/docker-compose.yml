@@ -1,0 +1,33 @@
+# Two services on a private network:
+#   whisper - whisper.cpp HTTP server, NO host port (unreachable from outside)
+#   gateway - Caddy, the only exposed port, checks the bearer token
+#
+# Start:   STT_TOKEN=... docker compose up -d --build   (or use the .env file)
+services:
+  whisper:
+    build:
+      context: .
+      args:
+        WHISPER_MODEL: ${WHISPER_MODEL:-small}
+    restart: unless-stopped
+    expose:
+      - "8080"          # internal only, not published to the host
+    networks: [vaiwu]
+
+  gateway:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      STT_TOKEN: ${STT_TOKEN:?set STT_TOKEN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      # Bind to the LAN IP only (edit BIND_IP), NOT 0.0.0.0, so it is never
+      # reachable from the internet even if the VM is port-forwarded.
+      - "${BIND_IP:-127.0.0.1}:8080:8080"
+    depends_on: [whisper]
+    networks: [vaiwu]
+
+networks:
+  vaiwu:
+    driver: bridge
