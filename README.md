@@ -1,6 +1,9 @@
 # 🐣 Tamagotchi Vaiwu
 
-**V.A.I.W.U. — Virtual AI Interactive Waifu Unit**
+[![CI](https://github.com/zimin3d/vaiwu/actions/workflows/ci.yml/badge.svg)](https://github.com/zimin3d/vaiwu/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/zimin3d/vaiwu)](https://github.com/zimin3d/vaiwu/releases)
+
+**V.A.I.W.U. — Virtual AI Interactive Waifu Unit** · [English](README_EN.md)
 
 Тамагочи-вайфу на ESP32-S3: виртуальный питомец, мини-RPG и нейросетевой
 помощник в одном карманном устройстве с 2.8" сенсорным экраном.
@@ -28,6 +31,9 @@ AI companion in one pocket device with a 2.8" touch display.*
 | [`hardware/`](hardware/) | Плата, распиновка, корпус (STL для 3D-печати) |
 
 ## Быстрый старт
+
+Готовая прошивка — в [Releases](https://github.com/zimin3d/vaiwu/releases)
+(инструкция по esptool — в описании релиза). Сборка из исходников:
 
 ```bash
 cd firmware
