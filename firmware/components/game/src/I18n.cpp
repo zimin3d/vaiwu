@@ -93,6 +93,10 @@ constexpr const char* kEn[kCount] = {
     "The chest holds %d gold!", "Dungeon cleared: %d rooms!",
     "MANA x%d", "  mana +%d", "Long press a slot = sell for half price",
     "Sold for %d gold", "Nothing to sell here",
+    "Update", "FIRMWARE UPDATE", "Checking...",
+    "Up to date (v%s)", "New version: %s",
+    "Flashing... %d%%", "Done! Reboot to finish.",
+    "Update failed. Try again?", "UPDATE", "REBOOT",
 };
 
 constexpr const char* kRu[kCount] = {
@@ -183,6 +187,10 @@ constexpr const char* kRu[kCount] = {
     "В сундуке %d золота!", "Подземелье пройдено: залов %d!",
     "МАНА x%d", "  мана +%d", "Долгий тап по слоту = продать за полцены",
     "Продано за %d золота", "Тут нечего продать",
+    "Обновление", "ОБНОВЛЕНИЕ ПРОШИВКИ", "Проверяю...",
+    "Уже последняя (v%s)", "Новая версия: %s",
+    "Прошиваю... %d%%", "Готово! Перезагрузите.",
+    "Не вышло. Повторить?", "ОБНОВИТЬ", "ПЕРЕЗАПУСК",
 };
 } // namespace
 

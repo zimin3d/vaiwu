@@ -8,6 +8,7 @@
 // then hands control to the LVGL task (VaiwuUi timers drive the game).
 
 #include "AlarmService.hpp"
+#include "OtaService.hpp"
 #include "SoundService.hpp"
 #include "VoiceService.hpp"
 #include "WeatherService.hpp"
@@ -121,6 +122,8 @@ extern "C" void app_main(void)
 
     static vaiwu::SoundService sound(logger, audio);
     static_cast<void>(sound.init());
+    static vaiwu::OtaService ota(logger);
+    static_cast<void>(ota.init());
 
     // --- network: stored credentials (on-screen setup) beat Kconfig ----------
     std::string ssid;
@@ -240,6 +243,12 @@ extern "C" void app_main(void)
     services.setBrightness = [](int percent) {
         display.setBrightness(static_cast<std::uint8_t>(percent < 0 ? 0 : (percent > 100 ? 100 : percent)));
     };
+    services.otaCheck = []() { ota.requestCheck(); };
+    services.otaUpdate = []() { ota.requestUpdate(); };
+    services.otaState = []() { return ota.state(); };
+    services.otaProgress = []() { return ota.progress(); };
+    services.otaTag = []() { return ota.latestTag(); };
+    services.otaReboot = []() { ota.rebootNow(); };
 
     // Assistant alarms/reminders. Polled from the UI's 1 s timer via dueAlarm.
     static vaiwu::AlarmService alarms;

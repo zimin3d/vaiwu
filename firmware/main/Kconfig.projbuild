@@ -84,3 +84,16 @@ menu "Tamagotchi Vaiwu Configuration"
             push-to-talk button (hold the mic icon on the chat screen).
 
 endmenu
+
+    config VAIWU_OTA_MANIFEST_URL
+        string "OTA: latest-release manifest URL"
+        default "https://api.github.com/repos/zimin3d/vaiwu/releases/latest"
+        help
+            GitHub API URL of the latest release; the firmware reads the
+            tag_name from it. Empty string disables the update row.
+
+    config VAIWU_OTA_DOWNLOAD_FMT
+        string "OTA: download URL printf-template"
+        default "https://github.com/zimin3d/vaiwu/releases/download/%s/vaiwu-%s.wfu"
+        help
+            printf template: first %s = release tag, second %s = tag again.

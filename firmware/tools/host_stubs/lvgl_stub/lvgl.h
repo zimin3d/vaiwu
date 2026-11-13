@@ -105,6 +105,7 @@ void lv_obj_align(lv_obj_t* o, lv_align_t a, int32_t x, int32_t y);
 void lv_obj_center(lv_obj_t* o);
 void lv_obj_add_flag(lv_obj_t* o, int f);
 void lv_obj_remove_flag(lv_obj_t* o, int f);
+bool lv_obj_has_flag(const lv_obj_t* o, int f);
 void lv_obj_add_event_cb(lv_obj_t* o, lv_event_cb_t cb, lv_event_code_t c, void* d);
 void lv_obj_remove_event_cb(lv_obj_t* o, lv_event_cb_t cb);
 void lv_obj_set_user_data(lv_obj_t* o, void* d);

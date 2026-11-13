@@ -14,3 +14,5 @@
 #define CONFIG_VAIWU_TTS_API_KEY "test-tts-key"
 #define CONFIG_VAIWU_TTS_MODEL "tts-1"
 #define CONFIG_VAIWU_TTS_VOICE "alloy"
+#define CONFIG_VAIWU_OTA_MANIFEST_URL "https://example.com/releases/latest"
+#define CONFIG_VAIWU_OTA_DOWNLOAD_FMT "https://example.com/%s/vaiwu-%s.wfu"

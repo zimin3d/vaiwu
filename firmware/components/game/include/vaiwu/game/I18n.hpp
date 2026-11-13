@@ -83,6 +83,9 @@ enum class Str : std::uint8_t {
     DungeonChestFmt /* printf: gold */, DungeonClearedFmt /* printf: rooms */,
     RpgMpPotionFmt /* printf: count */, RpgMpRestoredFmt /* printf: mp */,
     SellRow, SoldFmt /* printf: gold */, NothingToSell,
+    OtaRow, OtaTitle, OtaChecking, OtaUpToDateFmt /* printf: version */,
+    OtaAvailFmt /* printf: version */, OtaDownloadingFmt /* printf: percent */,
+    OtaReady, OtaFailed, OtaUpdateBtn, OtaRebootBtn,
     Count_,
 };
 

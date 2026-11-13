@@ -244,6 +244,16 @@ struct UiState {
     lv_obj_t* wifiRowLabel{nullptr};
     lv_obj_t* helpRowLabel{nullptr};
     lv_obj_t* voiceRowLabel{nullptr};
+    lv_obj_t* otaRowLabel{nullptr};
+    lv_obj_t* otaPanel{nullptr};
+    lv_obj_t* otaTitle{nullptr};
+    lv_obj_t* otaStatus{nullptr};
+    lv_obj_t* otaBar{nullptr};
+    lv_obj_t* otaUpdateBtn{nullptr};
+    lv_obj_t* otaUpdateLabel{nullptr};
+    lv_obj_t* otaRebootBtn{nullptr};
+    lv_obj_t* otaRebootLabel{nullptr};
+    lv_obj_t* otaCloseLabel{nullptr};
     lv_obj_t* dimRowLabel{nullptr};
     // Idle dimming: index into kDimTimeouts, seconds since the last touch,
     // the user's chosen brightness and whether we are currently dimmed.
@@ -801,6 +811,11 @@ void applyTexts()
         lv_label_set_text(g->dimRowLabel, row);
     }
     lv_label_set_text(g->helpRowLabel, tr_(Str::HelpRow));
+    lv_label_set_text(g->otaRowLabel, tr_(Str::OtaRow));
+    lv_label_set_text(g->otaTitle, tr_(Str::OtaTitle));
+    lv_label_set_text(g->otaUpdateLabel, tr_(Str::OtaUpdateBtn));
+    lv_label_set_text(g->otaRebootLabel, tr_(Str::OtaRebootBtn));
+    lv_label_set_text(g->otaCloseLabel, tr_(Str::Back));
     lv_label_set_text(g->helpTitle, tr_(Str::HelpTitle));
     lv_label_set_text(g->helpBody, tr_(Str::HelpBody));
     lv_label_set_text(g->helpBackLabel, tr_(Str::Back));
@@ -2738,12 +2753,66 @@ void pollAlarms()
     }
 }
 
+void pollOta()
+{
+    if (g->otaPanel == nullptr || lv_obj_has_flag(g->otaPanel, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+    if (!g->svc.otaState) {
+        return;
+    }
+    const int state = g->svc.otaState();
+    char msg[96];
+    switch (state) {
+    case 1: // Checking
+        lv_label_set_text(g->otaStatus, tr_(Str::OtaChecking));
+        break;
+    case 2: // UpToDate
+        std::snprintf(msg, sizeof(msg), tr_(Str::OtaUpToDateFmt), g->svc.otaTag ? g->svc.otaTag() : "");
+        lv_label_set_text(g->otaStatus, msg);
+        break;
+    case 3: // Available
+        std::snprintf(msg, sizeof(msg), tr_(Str::OtaAvailFmt), g->svc.otaTag ? g->svc.otaTag() : "");
+        lv_label_set_text(g->otaStatus, msg);
+        break;
+    case 4: // Downloading
+        std::snprintf(msg, sizeof(msg), tr_(Str::OtaDownloadingFmt),
+            g->svc.otaProgress ? g->svc.otaProgress() : 0);
+        lv_label_set_text(g->otaStatus, msg);
+        lv_bar_set_value(g->otaBar, g->svc.otaProgress ? g->svc.otaProgress() : 0,
+            LV_ANIM_OFF);
+        break;
+    case 5: // ReadyToReboot
+        lv_label_set_text(g->otaStatus, tr_(Str::OtaReady));
+        lv_bar_set_value(g->otaBar, 100, LV_ANIM_OFF);
+        break;
+    case 6: // Failed
+        lv_label_set_text(g->otaStatus, tr_(Str::OtaFailed));
+        break;
+    default: // Idle / Disabled: keep the previous text
+        break;
+    }
+    const bool canUpdate = (state == 3);
+    const bool canReboot = (state == 5);
+    if (canUpdate) {
+        lv_obj_remove_flag(g->otaUpdateBtn, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(g->otaUpdateBtn, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (canReboot) {
+        lv_obj_remove_flag(g->otaRebootBtn, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(g->otaRebootBtn, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
 void slowTick(lv_timer_t* timer)
 {
     static_cast<void>(timer);
     pollWifiState();
     pollVoice();
     pollWeather();
+    pollOta();
     pollAlarms();
     tickIdleDimming();
 
@@ -3501,6 +3570,61 @@ void buildChatScreen()
     setChatMode(false); // default to voice
 }
 
+void onOtaRow(lv_event_t* e)
+{
+    static_cast<void>(e);
+    lv_obj_remove_flag(g->otaPanel, LV_OBJ_FLAG_HIDDEN);
+    if (g->svc.otaCheck) {
+        g->svc.otaCheck();
+    }
+    pollOta();
+}
+
+void onOtaUpdate(lv_event_t* e)
+{
+    static_cast<void>(e);
+    if (g->svc.otaUpdate) {
+        g->svc.otaUpdate();
+    }
+}
+
+void onOtaReboot(lv_event_t* e)
+{
+    static_cast<void>(e);
+    if (g->svc.otaReboot) {
+        g->svc.otaReboot();
+    }
+}
+
+void onOtaClose(lv_event_t* e)
+{
+    static_cast<void>(e);
+    lv_obj_add_flag(g->otaPanel, LV_OBJ_FLAG_HIDDEN);
+}
+
+void buildOtaPanel()
+{
+    g->otaPanel = mkPanel(g->settingsScreen, 16, 30, 288, 180);
+    g->otaTitle = mkLabel(g->otaPanel, F14, kTextHex, "");
+    lv_obj_align(g->otaTitle, LV_ALIGN_TOP_MID, 0, 4);
+    g->otaStatus = mkLabel(g->otaPanel, F12, kDimHex, "");
+    lv_label_set_long_mode(g->otaStatus, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(g->otaStatus, 262);
+    lv_obj_align(g->otaStatus, LV_ALIGN_TOP_MID, 0, 30);
+    g->otaBar = lv_bar_create(g->otaPanel);
+    lv_obj_set_size(g->otaBar, 248, 10);
+    lv_bar_set_range(g->otaBar, 0, 100);
+    lv_obj_align(g->otaBar, LV_ALIGN_TOP_MID, 0, 64);
+    g->otaUpdateBtn = mkButton(g->otaPanel, 10, 92, 128, 34, "", F12, onOtaUpdate, 0,
+        &g->otaUpdateLabel);
+    g->otaRebootBtn = mkButton(g->otaPanel, 150, 92, 128, 34, "", F12, onOtaReboot, 0,
+        &g->otaRebootLabel);
+    mkButton(g->otaPanel, 10, 136, 268, 34, "", F12, onOtaClose, 0, &g->otaCloseLabel);
+    lv_obj_add_flag(g->otaUpdateBtn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(g->otaRebootBtn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(g->otaPanel, LV_OBJ_FLAG_HIDDEN);
+}
+
 void buildSettingsScreen()
 {
     g->settingsScreen = lv_obj_create(nullptr);
@@ -3543,6 +3667,8 @@ void buildSettingsScreen()
     mkButton(list, 0, 0, 288, 32, "", F12, onVoiceRow, 0, &g->voiceRowLabel);
     mkButton(list, 0, 0, 288, 32, "", F12, onDimRow, 0, &g->dimRowLabel);
     mkButton(list, 0, 0, 288, 32, "", F12, onOpenHelp, 0, &g->helpRowLabel);
+    mkButton(list, 0, 0, 288, 32, "", F12, onOtaRow, 0, &g->otaRowLabel);
+    buildOtaPanel();
 
     // New game: long-press only, to avoid accidental resets.
     lv_obj_t* resetBtn = lv_button_create(list);

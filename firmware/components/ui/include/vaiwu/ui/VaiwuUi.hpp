@@ -90,6 +90,15 @@ public:
         // live through these; main.cpp re-applies them at boot.
         std::function<void(int)> setVolume{};
         std::function<void(int)> setBrightness{};
+        // OTA firmware update (OtaService bridge). state: 0 Idle,
+        // 1 Checking, 2 UpToDate, 3 Available, 4 Downloading (see progress),
+        // 5 ReadyToReboot, 6 Failed, 7 Disabled. otaTag = latest release tag.
+        std::function<void()> otaCheck{};
+        std::function<void()> otaUpdate{};
+        std::function<int()> otaState{};
+        std::function<int()> otaProgress{};
+        std::function<const char*()> otaTag{};
+        std::function<void()> otaReboot{};
     };
 
     explicit VaiwuUi(Services services);

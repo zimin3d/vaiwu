@@ -82,6 +82,10 @@ def main():
          "tests/test_wav.cpp", "-o", wav_bin])
     run([wav_bin])
 
+    ota_bin = os.path.join(OUT, "test_ota")
+    run(["g++", *FLAGS, *inc, "tests/test_ota.cpp", "-o", ota_bin])
+    run([ota_bin])
+
     # 2. Host branches of the platform-dependent layers.
     for src in HOST_BRANCH_SRC:
         obj = os.path.join(OUT, os.path.basename(src) + ".host.o")

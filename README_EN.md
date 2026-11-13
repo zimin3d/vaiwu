@@ -16,6 +16,7 @@ companion in one pocket device with a 2.8" touch display.
 - She talks: an offline chiptune "babble" voice with a per-character timbre,
   or real speech via TTS
 - Russian and English UI
+- OTA updates over Wi-Fi from GitHub Releases (Settings → Update)
 
 ## Repository layout
 
