@@ -21,3 +21,6 @@ Thumbs.db
 # secrets (STT server token, API keys)
 .env
 server/.env
+
+# generated art gallery site (firmware/tools/gen_site.py)
+firmware/site/
