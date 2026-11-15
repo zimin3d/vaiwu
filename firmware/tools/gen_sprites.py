@@ -2,10 +2,9 @@
 """Generate the waifu sprite set (7 chars x 7 emotions, 96x128 RGB565A8 with a
 transparent background) plus the main-screen scene backdrop (320x140 RGB565).
 
-Style: detailed semi-realistic anime - taller, near-real proportions, layered
-hair with strand lines and shine bands, three-tone eyes with multiple
-highlights, soft alpha shading on skin and clothes, and per-character outfits
-with seams, folds and accessories. PNGs in assets/ are PREVIEWS ONLY; the
+Style: a more grown-up anime look (taller, less chibi proportions) in a soft
+pastel "caramel" palette - warm creamy skin, muted pastel outfits, distinct
+hairstyles and clothes per character. PNGs in assets/ are PREVIEWS ONLY; the
 firmware uses the C arrays emitted into components/ui/src/sprites.c.
 
 Run from the project root:  python3 tools/gen_sprites.py
@@ -23,30 +22,30 @@ SKIN_SICK = (223, 226, 200)
 OUTLINE = (92, 66, 74)
 WHITE = (250, 246, 240)
 BLUSH = (245, 175, 168)
-MOUTH = (176, 88, 92)
+MOUTH = (196, 110, 112)
 LASH = (86, 60, 70)
 
 EMOTIONS = ["idle", "happy", "sad", "angry", "sleepy", "sick", "dead"]
 CHARS = ["aoi", "hina", "rin", "yuki", "akane", "unicorn", "kolobok"]
 
 STYLE = {
-    "aoi":  dict(hair=(150, 186, 224), hair_dk=(120, 158, 200), iris=(96, 148, 208),
+    "aoi":  dict(hair=(150, 186, 224), hair_dk=(120, 158, 200), iris=(120, 170, 214),
                  top=(196, 216, 236), bottom=(170, 196, 224), accent=(224, 236, 248),
                  hairstyle="long", outfit="sundress"),
-    "hina": dict(hair=(240, 190, 150), hair_dk=(216, 160, 116), iris=(196, 138, 76),
+    "hina": dict(hair=(240, 190, 150), hair_dk=(216, 160, 116), iris=(226, 176, 116),
                  top=(246, 214, 186), bottom=(238, 196, 160), accent=(252, 232, 210),
                  hairstyle="twintails", outfit="hoodie"),
-    "rin":  dict(hair=(232, 168, 176), hair_dk=(206, 138, 150), iris=(196, 106, 124),
+    "rin":  dict(hair=(232, 168, 176), hair_dk=(206, 138, 150), iris=(214, 138, 150),
                  top=(244, 210, 216), bottom=(150, 120, 150), accent=(250, 230, 234),
                  hairstyle="bob", outfit="sailor"),
-    "yuki": dict(hair=(206, 194, 232), hair_dk=(178, 164, 212), iris=(148, 122, 210),
+    "yuki": dict(hair=(206, 194, 232), hair_dk=(178, 164, 212), iris=(170, 150, 214),
                  top=(224, 214, 240), bottom=(206, 194, 230), accent=(238, 230, 248),
                  hairstyle="hime", outfit="kimono"),
-    "akane": dict(hair=(238, 186, 150), hair_dk=(212, 154, 110), iris=(204, 142, 72),
+    "akane": dict(hair=(238, 186, 150), hair_dk=(212, 154, 110), iris=(226, 178, 120),
                   top=(240, 206, 176), bottom=(214, 176, 140), accent=(250, 234, 214),
                   hairstyle="fox", outfit="foxhoodie"),
     # Unicorn girl: pastel lilac mane + golden horn (see draw_front_hair).
-    "unicorn": dict(hair=(224, 186, 242), hair_dk=(198, 156, 226), iris=(150, 112, 226),
+    "unicorn": dict(hair=(224, 186, 242), hair_dk=(198, 156, 226), iris=(172, 142, 230),
                     top=(236, 222, 248), bottom=(210, 190, 238), accent=(248, 226, 170),
                     hairstyle="unicorn", outfit="sundress"),
     # Kolobok: not humanoid - a round golden bread bun with a simple face
@@ -55,18 +54,6 @@ STYLE = {
                     top=(242, 206, 130), bottom=(212, 168, 88), accent=(252, 238, 200),
                     hairstyle="kolobok", outfit="none"),
 }
-
-
-def shade(c, f):
-    return tuple(max(0, int(v * f)) for v in c[:3])
-
-
-def tint(c, f):
-    return tuple(min(255, int(v + (255 - v) * f)) for v in c[:3])
-
-
-def fade(c, a):
-    return c[:3] + (a,)
 
 
 def gray(c):
@@ -83,8 +70,6 @@ def rgba(c):
 class Painter:
     # dy shifts every y coordinate: used to recenter the shared face code on
     # non-humanoid bodies (kolobok's face sits lower than the girls').
-    # The ImageDraw is expected to be created with mode "RGBA" so 4-tuple
-    # colors alpha-blend onto the canvas (soft shadows, gloss, blush).
     def __init__(self, draw, dead, dy=0):
         self.d = draw
         self.dead = dead
@@ -127,372 +112,186 @@ class Painter:
         self.d.chord(self.box(x0, y0, x1, y1), a0, a1, fill=self.c(fill))
 
 
-HEAD = dict(x0=33, y0=7, x1=63, y1=45)
+HEAD = dict(x0=31, y0=8, x1=65, y1=52)
 
 
 def draw_back_hair(p, st):
     hair, hair_dk, style = st["hair"], st["hair_dk"], st["hairstyle"]
-
-    def strands(xs, y0, y1, color=None, w=0.5):
-        for sx in xs:
-            p.line(sx, y0, sx - 1, y1, color or hair_dk, w)
-
     if style == "long":
-        p.ell(27, 6, 69, 50, hair_dk)
-        p.rrect(28, 34, 68, 96, 9, hair_dk)
-        p.ell(27, 84, 45, 102, hair_dk)
-        p.ell(51, 84, 69, 102, hair_dk)
-        p.rrect(30, 36, 66, 92, 8, hair)
-        strands((31.5, 35, 61, 64.5), 44, 92)
-        p.arc(29, 38, 41, 96, 60, 160, tint(hair, 0.25), 0.8)
-        p.arc(55, 38, 67, 96, 20, 120, tint(hair, 0.25), 0.8)
+        p.ell(24, 12, 72, 58, hair_dk)
+        p.rrect(26, 40, 70, 104, 10, hair_dk)
+        p.ell(24, 92, 46, 108, hair_dk)
+        p.ell(50, 92, 72, 108, hair_dk)
     elif style == "twintails":
-        p.ell(28, 6, 68, 48, hair_dk)
-        p.ell(19, 12, 33, 28, hair_dk)                 # left puff (high)
-        p.ell(63, 12, 77, 28, hair_dk)                 # right puff (high)
-        p.rrect(18, 24, 28, 88, 5, hair_dk)            # left tail
-        p.rrect(68, 24, 78, 88, 5, hair_dk)            # right tail
-        p.ell(17, 82, 29, 96, hair_dk)                 # tail tips
-        p.ell(67, 82, 79, 96, hair_dk)
-        p.rrect(20, 26, 26, 84, 4, hair)               # inner volume
-        p.rrect(70, 26, 76, 84, 4, hair)
-        strands((21.5, 24, 72, 74.5), 30, 84)
-        p.line(21, 30, 20, 80, tint(hair, 0.3), 0.7)   # edge shine
-        p.line(71, 30, 70, 80, tint(hair, 0.3), 0.7)
+        p.ell(26, 12, 70, 56, hair_dk)
+        # high side ponytails: small puffs at the temples, slim tails hanging
+        # straight down close to the body (so they don't read as arms).
+        p.ell(20, 14, 34, 30, hair_dk)                 # left puff (high)
+        p.ell(62, 14, 76, 30, hair_dk)                 # right puff (high)
+        p.rrect(16, 26, 26, 86, 6, hair_dk)            # left tail
+        p.rrect(70, 26, 80, 86, 6, hair_dk)            # right tail
+        p.ell(15, 80, 27, 94, hair_dk)                 # tail tips
+        p.ell(69, 80, 81, 94, hair_dk)
         # little bows where the ties sit
-        p.poly([(19, 22), (23, 18), (25, 23)], st["accent"], OUTLINE, 0.3)
-        p.poly([(27, 22), (23, 18), (21, 23)], st["accent"], OUTLINE, 0.3)
-        p.ell(21, 21, 25, 25, shade(st["accent"], 0.85))
-        p.poly([(69, 22), (73, 18), (75, 23)], st["accent"], OUTLINE, 0.3)
-        p.poly([(77, 22), (73, 18), (71, 23)], st["accent"], OUTLINE, 0.3)
-        p.ell(71, 21, 75, 25, shade(st["accent"], 0.85))
+        p.ell(19, 18, 27, 26, st["accent"], OUTLINE, 0.4)
+        p.ell(69, 18, 77, 26, st["accent"], OUTLINE, 0.4)
     elif style == "bob":
-        p.ell(27, 6, 69, 52, hair_dk)
-        p.rrect(25, 30, 71, 58, 10, hair_dk)
-        p.ell(24, 46, 40, 64, hair_dk)                 # curled-in tips
-        p.ell(56, 46, 72, 64, hair_dk)
-        p.rrect(27, 32, 69, 55, 9, hair)
-        p.arc(28, 30, 44, 62, 90, 200, tint(hair, 0.25), 0.8)
-        p.arc(52, 30, 68, 62, 340, 90, tint(hair, 0.25), 0.8)
+        p.ell(26, 12, 70, 60, hair_dk)
+        p.rrect(24, 34, 72, 62, 10, hair_dk)
     elif style == "hime":
-        p.ell(27, 5, 69, 48, hair_dk)
-        p.rrect(27, 32, 69, 106, 3, hair_dk)           # straight fall, blunt hem
-        p.rrect(25, 30, 34, 78, 2, hair_dk)            # blunt side locks
-        p.rrect(62, 30, 71, 78, 2, hair_dk)
-        p.rrect(29, 34, 67, 102, 3, hair)
-        p.rrect(26.5, 32, 32.5, 76, 1.5, hair)
-        p.rrect(63.5, 32, 69.5, 76, 1.5, hair)
-        p.line(27, 105, 69, 105, hair_dk, 0.7)         # blunt cut line
-        strands((31, 34.5, 61.5, 65), 40, 102)
-        p.line(30, 38, 29.5, 100, tint(hair, 0.3), 0.7)
-        p.line(66, 38, 65.5, 100, tint(hair, 0.3), 0.7)
+        p.ell(24, 10, 72, 56, hair_dk)
+        p.rrect(24, 36, 72, 108, 10, hair_dk)
+        p.rrect(24, 36, 34, 78, 4, hair_dk)
+        p.rrect(62, 36, 72, 78, 4, hair_dk)
     elif style == "fox":
-        p.ell(27, 6, 69, 50, hair_dk)
-        p.rrect(27, 34, 67, 94, 9, hair_dk)
-        p.rrect(29, 36, 65, 90, 8, hair)
-        strands((30.5, 33.5, 62.5, 65.5), 44, 90)
-        # fox ears with dark tips and cream fluff inside
-        p.poly([(25, 20), (32, -4), (43, 24)], hair, OUTLINE, 0.4)
-        p.poly([(53, 24), (64, -4), (71, 20)], hair, OUTLINE, 0.4)
-        p.poly([(28, 8), (32, -4), (36, 10)], hair_dk)
-        p.poly([(60, 10), (64, -4), (68, 8)], hair_dk)
-        p.poly([(30, 18), (34, 4), (39, 21)], st["accent"])
-        p.poly([(57, 21), (62, 4), (66, 18)], st["accent"])
-        # big tail on the right with a cream tip and shading
-        p.ell(60, 76, 94, 116, hair_dk, OUTLINE, 0.5)
-        p.ell(64, 80, 90, 112, hair)
-        p.arc(66, 82, 88, 110, 90, 220, hair_dk, 0.8)
-        p.ell(76, 94, 92, 114, WHITE, OUTLINE, 0.3)
+        p.ell(26, 12, 70, 58, hair_dk)
+        p.rrect(24, 38, 70, 100, 10, hair_dk)
+        p.ell(62, 82, 92, 118, hair_dk)
+        p.ell(72, 98, 90, 116, WHITE)
+        p.poly([(24, 22), (33, -2), (44, 26)], hair)
+        p.poly([(52, 26), (63, -2), (72, 22)], hair)
+        p.poly([(29, 20), (34, 6), (40, 22)], st["accent"])
+        p.poly([(56, 22), (62, 6), (67, 20)], st["accent"])
     elif style == "unicorn":
-        # long flowing mane with a wavy hem, sweeping curl and pastel streaks
-        p.ell(27, 6, 69, 50, hair_dk)
-        p.rrect(28, 34, 68, 96, 9, hair_dk)
-        for i, wx in enumerate(range(27, 63, 9)):
-            p.ell(wx, 90 + (i % 2) * 4, wx + 11, 102 + (i % 2) * 4, hair_dk)
-        p.ell(58, 82, 86, 108, hair_dk)                # mane tip curling out
-        p.rrect(30, 36, 66, 92, 8, hair)
-        streak = tint(hair_dk, 0.3)
-        p.rrect(33, 42, 37, 90, 2.5, streak)           # pastel streaks
-        p.rrect(59, 44, 63, 94, 2.5, streak)
-        p.rrect(66, 58, 70, 92, 2, st["top"])
-        p.arc(61, 84, 84, 106, 180, 330, tint(hair, 0.25), 0.9)
-
-
-def draw_legs(p, st, skin):
-    skin_sh = shade(skin, 0.9)
-    shoe = shade(st["bottom"], 0.62)
-    shoe_dk = shade(st["bottom"], 0.45)
-    p.rrect(40, 96, 46, 118, 2.5, skin, OUTLINE, 0.4)
-    p.rrect(50, 96, 56, 118, 2.5, skin, OUTLINE, 0.4)
-    p.line(45, 100, 45, 112, skin_sh, 0.6)             # inner-leg shading
-    p.line(51, 100, 51, 112, skin_sh, 0.6)
-    # socks with a cuff stripe
-    p.rrect(40, 104, 46, 118, 2, st["accent"])
-    p.rrect(50, 104, 56, 118, 2, st["accent"])
-    p.line(40.5, 106.5, 45.5, 106.5, shade(st["accent"], 0.8), 0.6)
-    p.line(50.5, 106.5, 55.5, 106.5, shade(st["accent"], 0.8), 0.6)
-    # mary-jane shoes: strap, sole and a gloss dot
-    p.rrect(37, 115, 47, 124, 3, shoe, OUTLINE, 0.4)
-    p.rrect(49, 115, 59, 124, 3, shoe, OUTLINE, 0.4)
-    p.rrect(37, 121, 47, 124, 1.5, shoe_dk)
-    p.rrect(49, 121, 59, 124, 1.5, shoe_dk)
-    p.line(39, 117.5, 45, 117.5, shoe_dk, 0.6)
-    p.line(51, 117.5, 57, 117.5, shoe_dk, 0.6)
-    p.ell(39, 116.2, 41, 118.2, fade(tint(shoe, 0.5), 140))
-    p.ell(51, 116.2, 53, 118.2, fade(tint(shoe, 0.5), 140))
-
-
-def draw_arms(p, st, skin, sleeve):
-    # sleeve: "puff", "short", "long" or "wide" (kimono handled separately)
-    top, bottom = st["top"], st["bottom"]
-    if sleeve == "puff":
-        for sx in (28, 60):
-            p.ell(sx, 50, sx + 9.5, 61, top, OUTLINE, 0.4)
-            p.chord(sx, 56, sx + 9.5, 62, 0, 180, shade(top, 0.85))
-        p.rrect(30, 60, 36, 90, 2.5, skin, OUTLINE, 0.4)
-        p.rrect(60, 60, 66, 90, 2.5, skin, OUTLINE, 0.4)
-        p.ell(29.5, 88, 36.5, 96, skin, OUTLINE, 0.4)
-        p.ell(59.5, 88, 66.5, 96, skin, OUTLINE, 0.4)
-    elif sleeve == "short":
-        p.rrect(29, 52, 38, 66, 3, top, OUTLINE, 0.4)
-        p.rrect(58, 52, 67, 66, 3, top, OUTLINE, 0.4)
-        p.line(29.5, 63.5, 37.5, 63.5, bottom, 0.8)    # sleeve stripes
-        p.line(58.5, 63.5, 66.5, 63.5, bottom, 0.8)
-        p.rrect(30.5, 66, 36, 90, 2.5, skin, OUTLINE, 0.4)
-        p.rrect(60, 66, 65.5, 90, 2.5, skin, OUTLINE, 0.4)
-        p.ell(29.5, 88, 36.5, 96, skin, OUTLINE, 0.4)
-        p.ell(59.5, 88, 66.5, 96, skin, OUTLINE, 0.4)
-    elif sleeve == "long":
-        p.rrect(28.5, 52, 37, 88, 4, top, OUTLINE, 0.4)
-        p.rrect(59, 52, 67.5, 88, 4, top, OUTLINE, 0.4)
-        p.line(32, 56, 31.5, 82, shade(top, 0.88), 0.5)  # sleeve crease
-        p.line(64, 56, 64.5, 82, shade(top, 0.88), 0.5)
-        p.rrect(28.5, 84, 37, 92, 2.5, bottom, OUTLINE, 0.3)  # ribbed cuffs
-        p.rrect(59, 84, 67.5, 92, 2.5, bottom, OUTLINE, 0.3)
-        p.ell(30, 90, 37, 97, skin, OUTLINE, 0.4)
-        p.ell(59, 90, 66, 97, skin, OUTLINE, 0.4)
+        # long flowing mane sweeping outwards, with lighter pastel streaks
+        p.ell(24, 12, 72, 58, hair_dk)
+        p.rrect(26, 40, 72, 102, 10, hair_dk)
+        p.ell(58, 88, 84, 112, hair_dk)          # mane tip curling out
+        p.ell(24, 92, 46, 108, hair_dk)
+        streak = tuple(min(255, v + 24) for v in hair_dk)
+        p.rrect(32, 44, 38, 96, 3, streak)       # pastel streaks in the mane
+        p.rrect(58, 46, 64, 100, 3, streak)
+        p.rrect(66, 60, 71, 98, 2, st["top"])
 
 
 def draw_body(p, st, emo):
     skin = SKIN_SICK if emo == "sick" else SKIN
     top, bottom, accent, outfit = st["top"], st["bottom"], st["accent"], st["outfit"]
-    top_sh, top_hi = shade(top, 0.85), tint(top, 0.25)
-    bot_sh = shade(bottom, 0.82)
 
-    # neck + soft shadow cast by the chin
-    p.rrect(44, 42, 52, 54, 3, skin)
-    p.chord(43, 41, 53, 50, 0, 180, fade(shade(SKIN_SHADE, 0.85), 90))
-
-    draw_legs(p, st, skin)
+    p.rrect(44, 48, 52, 58, 3, skin)
+    p.rrect(40, 100, 47, 124, 3, skin, OUTLINE, 0.5)
+    p.rrect(49, 100, 56, 124, 3, skin, OUTLINE, 0.5)
+    p.rrect(38, 120, 48, 126, 2, accent, OUTLINE, 0.5)
+    p.rrect(48, 120, 58, 126, 2, accent, OUTLINE, 0.5)
 
     if outfit == "sundress":
-        p.rrect(39, 47, 42, 54, 1, top, OUTLINE, 0.3)   # shoulder straps
-        p.rrect(54, 47, 57, 54, 1, top, OUTLINE, 0.3)
-        p.poly([(36, 52), (60, 52), (57, 76), (39, 76)], top, OUTLINE, 0.5)
-        p.arc(38, 62, 58, 76, 20, 160, top_sh, 0.7)     # under-bust seam
-        p.line(41, 54, 44, 72, top_hi, 0.6)             # bodice sheen
-        p.rrect(38, 74, 58, 79, 2, top_sh)              # waistband
-        p.poly([(38, 79), (58, 79), (67, 103), (29, 103)], top, OUTLINE, 0.5)
-        for fx0, fx1 in ((37, 33), (43, 41), (53, 55), (59, 63)):  # radiating folds
-            p.line(fx0, 80, fx1, 101, top_sh, 0.6)
-        p.rrect(29, 99, 67, 105, 3, bottom)             # hem band
-        p.line(31, 101.5, 65, 101.5, top_hi, 0.5)       # hem stitching
-        draw_arms(p, st, skin, "puff")
-    elif outfit in ("hoodie", "foxhoodie"):
-        p.ell(35, 44, 61, 60, top_sh)                   # hood resting behind neck
-        p.arc(39, 46, 57, 62, 20, 160, shade(top, 0.75), 1.0)
-        p.rrect(33, 50, 63, 92, 7, top, OUTLINE, 0.5)
-        p.line(48, 58, 48, 90, top_sh, 0.6)             # center seam
-        p.line(44.5, 56, 43.5, 67, accent, 0.8)         # drawstrings
-        p.line(51.5, 56, 52.5, 67, accent, 0.8)
-        p.ell(42.5, 66, 45.5, 69, accent)
-        p.ell(50.5, 66, 53.5, 69, accent)
-        p.poly([(38, 74), (58, 74), (56, 88), (40, 88)], shade(top, 0.93), OUTLINE, 0.3)
-        p.line(38, 74, 42, 80, OUTLINE, 0.3)            # pocket slants
-        p.line(58, 74, 54, 80, OUTLINE, 0.3)
-        if outfit == "foxhoodie":                       # paw print on the pocket
-            p.ell(46, 80, 50, 84, accent)
-            p.ell(43.5, 77.5, 45.5, 79.8, accent)
-            p.ell(47, 76.8, 49, 79.2, accent)
-            p.ell(50.5, 77.5, 52.5, 79.8, accent)
-        p.rrect(33, 88, 63, 96, 4, bottom, OUTLINE, 0.4)  # ribbed hem
-        for hx in range(36, 63, 4):
-            p.line(hx, 89, hx, 95, bot_sh, 0.5)
-        draw_arms(p, st, skin, "long")
+        p.poly([(38, 56), (58, 56), (68, 104), (28, 104)], top, OUTLINE, 0.7)
+        p.rrect(30, 100, 66, 108, 4, bottom)
+        p.line(42, 50, 44, 58, accent, 1.0)
+        p.line(54, 50, 52, 58, accent, 1.0)
+    elif outfit == "hoodie":
+        p.rrect(32, 56, 64, 98, 8, top, OUTLINE, 0.7)
+        p.rrect(30, 92, 66, 116, 6, bottom, OUTLINE, 0.6)
+        p.arc(40, 52, 56, 66, 20, 160, accent, 1.4)
+        p.line(48, 60, 48, 84, st["hair_dk"], 0.8)
+        p.ell(44, 84, 47, 88, accent)
+        p.ell(49, 84, 52, 88, accent)
     elif outfit == "sailor":
-        p.rrect(35, 50, 61, 82, 5, top, OUTLINE, 0.5)
-        p.poly([(34, 50), (62, 50), (57, 68), (39, 68)], bottom, OUTLINE, 0.4)
-        p.line(37.5, 53, 41, 65.5, accent, 0.7)         # collar stripes
-        p.line(58.5, 53, 55, 65.5, accent, 0.7)
-        p.line(36, 51, 60, 51, accent, 0.7)
-        p.poly([(42, 50), (54, 50), (48, 64)], top)     # chest V under the collar
-        p.ell(44.5, 54, 51.5, 59, shade(accent, 0.85), OUTLINE, 0.3)  # scarf knot
-        p.poly([(43, 58), (53, 58), (48, 73)], accent, OUTLINE, 0.3)
-        p.line(48, 60, 48, 71, shade(accent, 0.8), 0.5)
-        p.line(37, 74, 59, 74, top_sh, 0.5)             # blouse hem seam
-        p.poly([(35, 82), (61, 82), (67, 102), (29, 102)], bottom, OUTLINE, 0.5)
-        for fx in range(33, 66, 6):                     # pleats
-            p.line(fx, 84, fx - 2, 100, bot_sh, 0.7)
-        for fx in range(39, 66, 12):
-            p.line(fx, 84, fx - 1.5, 100, tint(bottom, 0.18), 0.5)
-        draw_arms(p, st, skin, "short")
+        p.rrect(34, 56, 62, 92, 6, top, OUTLINE, 0.7)
+        p.poly([(40, 56), (56, 56), (48, 74)], accent)
+        p.poly([(45, 66), (51, 66), (48, 76)], bottom)
+        p.rrect(30, 90, 66, 112, 4, bottom, OUTLINE, 0.6)
+        for sx in range(34, 64, 6):
+            p.line(sx, 92, sx, 110, top, 0.6)
     elif outfit == "kimono":
-        p.poly([(35, 50), (61, 50), (67, 112), (29, 112)], top, OUTLINE, 0.5)
-        p.poly([(44, 50), (52, 50), (48, 58)], skin)    # collar opening
-        p.poly([(48, 50), (60, 50), (49, 80)], accent, OUTLINE, 0.3)
-        p.poly([(48, 50), (36, 50), (47, 80)], shade(accent, 0.85), OUTLINE, 0.3)
-        p.rrect(33, 78, 63, 90, 2, bottom, OUTLINE, 0.4)  # obi
-        p.line(33, 84, 63, 84, accent, 0.7)             # obijime cord
-        p.ell(44, 80, 52, 88, accent, OUTLINE, 0.3)     # front knot
-        p.line(31, 106, 65, 106, top_sh, 0.8)           # hem shading
-        for fx, fy in ((38, 96), (56, 100), (48, 106), (60, 94)):  # fabric pattern
-            p.ell(fx, fy, fx + 2.5, fy + 2.5, tint(top, 0.35))
-        # wide hanging sleeves with dark openings and small hands
-        p.poly([(30, 52), (38, 52), (37, 94), (27, 90)], top, OUTLINE, 0.4)
-        p.poly([(58, 52), (66, 52), (69, 90), (59, 94)], top, OUTLINE, 0.4)
-        p.poly([(28, 87), (37, 91), (37, 94), (27, 90)], shade(top, 0.7))
-        p.poly([(68, 87), (59, 91), (59, 94), (69, 90)], shade(top, 0.7))
-        p.ell(30, 90, 36, 96, skin, OUTLINE, 0.3)
-        p.ell(60, 90, 66, 96, skin, OUTLINE, 0.3)
+        p.poly([(36, 56), (60, 56), (66, 110), (30, 110)], top, OUTLINE, 0.7)
+        p.poly([(48, 56), (60, 56), (48, 84)], accent)
+        p.poly([(48, 56), (36, 56), (48, 84)], bottom)
+        p.rrect(34, 78, 62, 88, 2, bottom)
+        p.rrect(44, 78, 52, 88, 2, accent)
+    elif outfit == "foxhoodie":
+        p.rrect(32, 56, 64, 100, 8, top, OUTLINE, 0.7)
+        p.rrect(30, 94, 66, 116, 6, bottom, OUTLINE, 0.6)
+        p.arc(40, 52, 56, 66, 20, 160, accent, 1.4)
+        p.ell(43, 84, 53, 92, accent)
+        p.line(48, 60, 48, 82, st["hair_dk"], 0.8)
+
+    p.rrect(28, 60, 35, 96, 3, skin, OUTLINE, 0.5)
+    p.rrect(61, 60, 68, 96, 3, skin, OUTLINE, 0.5)
 
 
 def draw_head(p, st, emo):
     skin = SKIN_SICK if emo == "sick" else SKIN
-    p.ell(HEAD["x0"], HEAD["y0"], HEAD["x1"], HEAD["y1"], skin, OUTLINE, 0.5)
-    # tapered anime jaw with a soft chin point
-    p.poly([(37, 32), (59, 32), (52, 46), (48, 48.5), (44, 46)], skin)
-    p.chord(HEAD["x0"], HEAD["y1"] - 16, HEAD["x1"], HEAD["y1"] + 1, 25, 155,
-            fade(shade(SKIN_SHADE, 0.92), 110))
-    # ears peeking from under the hair
-    p.ell(30.5, 24, 34, 31, skin, OUTLINE, 0.3)
-    p.ell(62, 24, 65.5, 31, skin, OUTLINE, 0.3)
+    p.ell(HEAD["x0"], HEAD["y0"], HEAD["x1"], HEAD["y1"], skin, OUTLINE, 0.7)
+    p.chord(HEAD["x0"], HEAD["y1"] - 20, HEAD["x1"], HEAD["y1"] + 2, 20, 160,
+            SKIN_SICK if emo == "sick" else SKIN_SHADE)
 
 
 def draw_front_hair(p, st):
     hair, hair_dk, style = st["hair"], st["hair_dk"], st["hairstyle"]
-    hair_hi = tint(hair, 0.35)
-    p.chord(27, 3, 69, 46, 175, 365, hair)             # crown cap
-    if style == "hime":
-        p.rrect(29, 14, 67, 25, 2, hair)               # straight blunt bangs
-        p.line(29, 25.5, 67, 25.5, hair_dk, 0.6)
-    else:
-        # jagged fringe: a zig-zag hem of pointed strands
-        p.poly([(28, 14), (68, 14), (68, 21), (62.5, 27), (58, 20), (53, 26.5),
-                (48, 21), (43, 26.5), (38, 20), (33.5, 26), (28, 21)], hair)
-        for sx in (35.5, 45.5, 55.5, 63):              # strand separations
-            p.line(sx, 15, sx - 1, 22, hair_dk, 0.5)
+    p.chord(28, 4, 68, 50, 178, 362, hair)
+    for x0, x1, drop in [(29, 41, 30), (39, 51, 33), (47, 59, 33), (57, 67, 30)]:
+        p.chord(x0, 14, x1, drop, 0, 180, hair)
     if style in ("long", "hime", "fox", "unicorn"):
-        # tapered locks framing the face
-        p.poly([(28, 18), (34, 18), (32.5, 46), (29, 42)], hair)
-        p.poly([(62, 18), (68, 18), (67, 42), (63.5, 46)], hair)
-        p.line(30, 22, 29.6, 40, hair_dk, 0.5)
-        p.line(66, 22, 66.4, 40, hair_dk, 0.5)
-    # two-pass shine band across the crown
-    p.arc(31, 5, 65, 38, 195, 255, hair_hi, 1.8)
-    p.arc(35, 8, 61, 34, 200, 250, tint(hair, 0.55), 0.8)
-    # soft shadow the fringe casts on the forehead (kept above the eyes)
-    p.chord(30, 14, 66, 32, 0, 180, fade(shade(hair_dk, 0.7), 26))
+        p.rrect(28, 22, 33, 46, 3, hair)
+        p.rrect(63, 22, 68, 46, 3, hair)
+    p.arc(32, 8, 64, 40, 200, 250, tuple(min(255, v + 30) for v in hair), 1.6)
     if style == "twintails":
-        p.arc(42, 2, 56, 15, 250, 340, hair, 1.2)      # ahoge
-        p.arc(43, 3, 55, 14, 255, 335, hair_hi, 0.5)
+        p.arc(42, 2, 56, 16, 250, 340, hair, 1.2)      # ahoge
     elif style == "bob":
-        p.poly([(58, 15), (66, 11), (64, 19)], st["accent"], OUTLINE, 0.3)  # hairpin
-        p.line(59.5, 14, 64.5, 12, tint(st["accent"], 0.4), 0.5)
+        p.poly([(58, 16), (66, 12), (64, 20)], st["accent"])
     elif style == "hime":
-        for dx in (0, 3, -3):                          # small flower clip
-            p.ell(60 + dx, 21, 63 + dx, 24, WHITE)
+        for dx in (0, 3, -3):
+            p.ell(60 + dx, 22, 63 + dx, 25, WHITE)
     elif style == "fox":
-        p.arc(42, 4, 56, 16, 250, 340, hair, 1.2)      # ahoge
-        p.arc(43, 5, 55, 15, 255, 335, hair_hi, 0.5)
+        p.arc(42, 4, 56, 16, 250, 340, hair, 1.2)
     elif style == "unicorn":
-        # golden horn with spiral grooves + a sparkle
+        # golden horn with a couple of spiral grooves + a sparkle
         horn, horn_dk = st["accent"], (222, 188, 116)
         p.poly([(43, 12), (53, 12), (48, -4)], horn, OUTLINE, 0.4)
         p.line(44.5, 8, 51, 9.5, horn_dk, 0.6)
         p.line(45.5, 4, 50, 5.2, horn_dk, 0.6)
-        p.line(57, 2, 61, 2, fade(WHITE, 200), 0.6)
-        p.line(59, 0, 59, 4, fade(WHITE, 200), 0.6)
+        p.line(57, 2, 61, 2, WHITE, 0.6)
+        p.line(59, 0, 59, 4, WHITE, 0.6)
 
 
 def draw_open_eye(p, st, ex, ey, droop=0.0, narrow=0.0):
     iris = st["iris"]
-    h = 6.5 - int(2.5 * narrow)
-    p.ell(ex - 5, ey - h, ex + 5, ey + h, WHITE, OUTLINE, 0.35)
-    p.chord(ex - 5, ey - h, ex + 5, ey - h + 3.5, 180, 360, fade((150, 140, 160), 60))
-    # three-tone iris: base, dark top under the lash line, lit bottom
-    p.ell(ex - 3.8, ey - h + 1, ex + 3.8, ey + h - 0.5, iris)
-    p.chord(ex - 3.8, ey - h + 1, ex + 3.8, ey + 1.5, 180, 360, shade(iris, 0.6))
-    p.chord(ex - 3.8, ey + 0.5, ex + 3.8, ey + h - 0.5, 0, 180, tint(iris, 0.4))
-    p.ell(ex - 1.7, ey - 1.2, ex + 1.7, ey + 2.6, (48, 36, 54))       # pupil
-    p.ell(ex - 2.7, ey - h + 1.6, ex - 0.5, ey - h + 4.0, WHITE)      # key light
-    p.ell(ex + 0.9, ey + 1.2, ex + 2.2, ey + 2.5, fade(WHITE, 220))   # rim light
-    # upper lash with an outer-corner flick + a hint of lower lash
-    p.arc(ex - 5.5, ey - h - 1 + droop, ex + 5.5, ey + h - 1 + droop, 190, 350, LASH, 1.5)
-    p.line(ex - 5.2, ey - 2 + droop, ex - 7, ey - 3.5 + droop, LASH, 1.0)
-    p.arc(ex - 3.5, ey + 1.5, ex + 3.5, ey + h + 1.5, 30, 150, tint(LASH, 0.45), 0.5)
-
-
-def draw_brow(p, x0, y0, x1, y1, color, w=0.9):
-    # tapered brow: a thick root stroke plus a thin tip stroke
-    mx, my = (x0 + x1) / 2, (y0 + y1) / 2
-    p.line(x0, y0, mx, my, color, w + 0.3)
-    p.line(mx, my, x1, y1, color, max(0.4, w - 0.3))
+    h = 6 - int(2.5 * narrow)
+    p.ell(ex - 4.5, ey - h, ex + 4.5, ey + h, WHITE, OUTLINE, 0.4)
+    p.ell(ex - 3.4, ey - h + 1.2, ex + 3.4, ey + h - 0.6, iris)
+    p.ell(ex - 1.6, ey - 0.5, ex + 1.6, ey + h - 2.0, (54, 42, 58))
+    p.ell(ex - 2.6, ey - h + 1.6, ex - 0.4, ey - h + 3.8, WHITE)
+    p.ell(ex + 0.9, ey + 1.2, ex + 2.0, ey + 2.6, WHITE)
+    p.arc(ex - 5.5, ey - h - 1 + droop, ex + 5.5, ey + h - 1 + droop, 195, 345, LASH, 1.2)
+    p.line(ex - 5.5, ey - 2 + droop, ex - 3.2, ey - 3 + droop, LASH, 1.0)
 
 
 def draw_face(p, st, emo):
-    lx, rx, ey = 41, 55, 26
-    brow_c = shade(st["hair_dk"], 0.85)
-    nose = lambda: p.line(48, 31.5, 47.4, 33.5, shade(SKIN_SHADE, 0.82), 0.5)
+    lx, rx, ey = 40, 56, 30
     if emo == "idle":
         draw_open_eye(p, st, lx, ey)
         draw_open_eye(p, st, rx, ey)
-        p.arc(lx - 5, ey - 11, lx + 5, ey - 5, 200, 340, brow_c, 0.9)
-        p.arc(rx - 5, ey - 11, rx + 5, ey - 5, 200, 340, brow_c, 0.9)
-        nose()
-        p.arc(45, 37, 51, 42, 20, 160, MOUTH, 0.9)
-        p.arc(45.5, 38.5, 50.5, 43, 30, 150, tint(MOUTH, 0.45), 0.5)
+        p.arc(45, 38, 51, 43, 20, 160, MOUTH, 0.9)
     elif emo == "happy":
-        for ex in (lx, rx):
-            p.arc(ex - 5.5, ey - 5, ex + 5.5, ey + 4, 190, 350, LASH, 1.6)
-            p.line(ex - 5.5, ey - 2.2, ex - 7.2, ey - 3.4, LASH, 0.9)
-            p.arc(ex - 5, ey - 12, ex + 5, ey - 6, 210, 330, brow_c, 0.9)
-        nose()
-        p.chord(43, 36, 53, 45, 0, 180, (150, 66, 70))   # open smile
-        p.chord(43.8, 36, 52.2, 39.8, 0, 180, WHITE)     # teeth
-        p.chord(45, 41, 51, 45, 0, 180, (235, 140, 140))  # tongue
-        p.arc(43, 36, 53, 45, 0, 180, MOUTH, 0.5)
-        for sx, sy in ((22, 14), (72, 12), (76, 32)):
+        p.arc(lx - 5, ey - 4, lx + 5, ey + 5, 190, 350, LASH, 1.5)
+        p.arc(rx - 5, ey - 4, rx + 5, ey + 5, 190, 350, LASH, 1.5)
+        p.chord(44, 37, 52, 45, 0, 180, MOUTH)
+        p.chord(45, 37, 51, 41, 0, 180, WHITE)
+        for sx, sy in ((22, 16), (72, 14), (76, 34)):
             p.line(sx - 2.5, sy, sx + 2.5, sy, st["accent"], 0.8)
             p.line(sx, sy - 2.5, sx, sy + 2.5, st["accent"], 0.8)
     elif emo == "sad":
         draw_open_eye(p, st, lx, ey, droop=1.4)
         draw_open_eye(p, st, rx, ey, droop=1.4)
-        draw_brow(p, lx - 5, ey - 8, lx + 4, ey - 10.5, brow_c)   # inner ends up
-        draw_brow(p, rx + 5, ey - 8, rx - 4, ey - 10.5, brow_c)
-        nose()
+        p.line(lx - 5, ey - 7, lx + 4, ey - 5, LASH, 0.9)
+        p.line(rx + 5, ey - 7, rx - 4, ey - 5, LASH, 0.9)
         p.arc(45, 40, 51, 45, 200, 340, MOUTH, 0.9)
-        p.ell(rx + 5, ey + 4, rx + 8, ey + 10, (170, 210, 240), OUTLINE, 0.3)
-        p.ell(rx + 5.8, ey + 4.8, rx + 7.2, ey + 6.4, fade(WHITE, 200))
-        p.ell(lx - 7, ey + 8, lx - 4, ey + 13, fade((170, 210, 240), 200))
+        p.ell(rx + 5, ey + 5, rx + 8, ey + 11, (170, 210, 240), OUTLINE, 0.3)
     elif emo == "angry":
-        draw_open_eye(p, st, lx, ey, narrow=0.6)
-        draw_open_eye(p, st, rx, ey, narrow=0.6)
-        draw_brow(p, lx - 6, ey - 11, lx + 4, ey - 7, brow_c, 1.1)  # slanted in
-        draw_brow(p, rx + 6, ey - 11, rx - 4, ey - 7, brow_c, 1.1)
-        nose()
+        draw_open_eye(p, st, lx, ey, narrow=0.5)
+        draw_open_eye(p, st, rx, ey, narrow=0.5)
+        p.line(lx - 6, ey - 9, lx + 4, ey - 6, LASH, 1.2)
+        p.line(rx + 6, ey - 9, rx - 4, ey - 6, LASH, 1.2)
         p.arc(44, 40, 52, 46, 200, 340, MOUTH, 1.0)
-        for a, b in (((70, 6), (76, 12)), ((76, 6), (70, 12)),
-                     ((73, 4), (73, 14)), ((68, 9), (78, 9))):
+        for a, b in (((70, 8), (76, 14)), ((76, 8), (70, 14)),
+                     ((73, 6), (73, 16)), ((68, 11), (78, 11))):
             p.line(a[0], a[1], b[0], b[1], (226, 130, 120), 0.8)
     elif emo == "sleepy":
-        for ex in (lx, rx):
-            p.arc(ex - 5, ey - 2, ex + 5, ey + 4, 15, 165, LASH, 1.4)
-            p.line(ex - 4, ey + 2.4, ex - 5.6, ey + 3.4, tint(LASH, 0.3), 0.6)
-            p.arc(ex - 5, ey - 10, ex + 5, ey - 5, 210, 330, brow_c, 0.8)
-        nose()
-        p.ell(45.5, 38, 50.5, 43, (150, 66, 70))         # small yawn
-        p.chord(45.5, 40.5, 50.5, 43, 0, 180, (235, 140, 140))
-        for zx, zy, zs in ((66, 10, 4), (72, 4, 5), (79, -2, 6)):
+        p.arc(lx - 5, ey - 2, lx + 5, ey + 4, 15, 165, LASH, 1.4)
+        p.arc(rx - 5, ey - 2, rx + 5, ey + 4, 15, 165, LASH, 1.4)
+        p.arc(46, 39, 50, 43, 20, 160, MOUTH, 0.8)
+        for zx, zy, zs in ((66, 12, 4), (72, 6, 5), (79, 0, 6)):
             p.line(zx, zy, zx + zs, zy, st["accent"], 0.8)
             p.line(zx + zs, zy, zx, zy + zs, st["accent"], 0.8)
             p.line(zx, zy + zs, zx + zs, zy + zs, st["accent"], 0.8)
@@ -500,51 +299,39 @@ def draw_face(p, st, emo):
         for ex in (lx, rx):
             p.arc(ex - 4, ey - 4, ex + 4, ey + 4, 0, 290, LASH, 0.9)
             p.arc(ex - 1.8, ey - 1.8, ex + 1.8, ey + 1.8, 100, 360, LASH, 0.9)
-        p.arc(lx - 5, ey - 11, lx + 5, ey - 6, 210, 330, brow_c, 0.8)
-        p.arc(rx - 5, ey - 11, rx + 5, ey - 6, 210, 330, brow_c, 0.8)
-        nose()
-        p.arc(44, 39, 52, 44, 190, 350, MOUTH, 0.9)      # queasy wavy mouth
+        p.arc(44, 39, 52, 44, 190, 350, MOUTH, 0.9)
         p.arc(45, 42, 51, 46, 10, 170, MOUTH, 0.9)
-        p.ell(30, 6, 38, 16, (176, 216, 240), OUTLINE, 0.4)  # sweat drop
+        p.ell(30, 6, 38, 16, (176, 216, 240), OUTLINE, 0.4)
         p.poly([(34, 3), (30, 10), (38, 10)], (176, 216, 240))
-        p.ell(31.8, 8, 34, 10.5, fade(WHITE, 200))
     elif emo == "dead":
         for ex in (lx, rx):
             p.line(ex - 3.5, ey - 3.5, ex + 3.5, ey + 3.5, (72, 72, 78), 1.3)
             p.line(ex - 3.5, ey + 3.5, ex + 3.5, ey - 3.5, (72, 72, 78), 1.3)
         p.line(45, 41, 51, 41, (72, 72, 78), 0.9)
     if emo not in ("dead", "sick", "angry"):
-        for bx in (33, 56):
-            p.ell(bx, 33, bx + 7, 38, fade(BLUSH, 85))
-            p.ell(bx + 1, 34, bx + 6, 37, fade(BLUSH, 90))
-    elif emo == "sick":
-        for bx in (33, 56):
-            p.ell(bx, 33, bx + 7, 38, fade((200, 220, 170), 80))
+        p.ell(33, 33, 40, 38, BLUSH)
+        p.ell(56, 33, 63, 38, BLUSH)
 
 
 def draw_kolobok(p, st, emo):
-    # One big golden bun: baked crust with radial shading, glossy highlight,
-    # crust cracks and stubby feet. The face is drawn separately with a +28
-    # y-offset so the shared emotion code lands in the bun's middle.
+    # One big golden bun instead of a body: crust, bottom shading, a shiny
+    # highlight and a few crust cracks. The face is drawn separately with a
+    # +28 y-offset so the shared emotion code lands in the bun's middle.
     bun = (216, 212, 150) if emo == "sick" else st["hair"]
-    p.ell(12, 30, 84, 104, bun, OUTLINE, 0.7)
-    p.chord(12, 62, 84, 106, 15, 165, st["hair_dk"])   # bottom bake shade
-    p.arc(58, 36, 86, 100, 300, 60, fade(shade(st["hair_dk"], 0.85), 90), 2.0)
-    p.arc(16, 36, 80, 100, 200, 250, tint(bun, 0.3), 1.8)  # top glow
-    p.ell(21, 37, 41, 55, fade(tint(bun, 0.65), 110))  # soft gloss
-    p.ell(24, 39, 33, 47, fade(WHITE, 150))
-    for cx, cy, cl in ((30, 52, 5), (60, 44, 4), (70, 62, 4), (40, 78, 4)):
-        p.arc(cx, cy, cx + cl, cy + 3, 20, 160, shade(st["hair_dk"], 0.9), 0.6)
-    p.ell(30, 100, 42, 110, st["hair_dk"], OUTLINE, 0.5)   # little feet
+    p.ell(12, 32, 84, 104, bun, OUTLINE, 0.8)
+    p.chord(12, 66, 84, 106, 20, 160, st["hair_dk"])
+    p.arc(18, 38, 78, 98, 200, 250, tuple(min(255, v + 28) for v in bun), 1.8)
+    for cx, cy, cl in ((30, 44, 5), (62, 40, 4), (70, 60, 4)):  # crust cracks
+        p.arc(cx, cy, cx + cl, cy + 3, 20, 160, st["hair_dk"], 0.6)
+    # stubby little feet so he can "run away from grandma"
+    p.ell(30, 100, 42, 110, st["hair_dk"], OUTLINE, 0.5)
     p.ell(54, 100, 66, 110, st["hair_dk"], OUTLINE, 0.5)
-    p.arc(31, 101, 41, 108, 200, 320, tint(st["hair_dk"], 0.3), 0.6)
-    p.arc(55, 101, 65, 108, 200, 320, tint(st["hair_dk"], 0.3), 0.6)
 
 
 def render(char, emo):
     st = STYLE[char]
     img = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img, "RGBA")
+    d = ImageDraw.Draw(img)
     dead = emo == "dead"
     p = Painter(d, dead=dead)
     if st["hairstyle"] == "kolobok":
@@ -588,88 +375,49 @@ MW = MH = 96
 
 def render_monster(kind):
     img = Image.new("RGBA", (MW * S, MH * S), (0, 0, 0, 0))
-    p = Painter(ImageDraw.Draw(img, "RGBA"), dead=False)
+    p = Painter(ImageDraw.Draw(img), dead=False)
     if kind == "slime":
         body = (120, 205, 140)
         body_dk = (90, 175, 112)
-        core = (150, 222, 168)
         p.ell(12, 34, 84, 92, body, OUTLINE, 0.8)          # gooey dome
-        p.chord(12, 60, 84, 94, 15, 165, body_dk)          # settled bottom
-        p.arc(66, 42, 86, 88, 300, 60, fade(shade(body_dk, 0.85), 90), 1.6)
-        p.ell(24, 44, 72, 84, fade(core, 110))             # translucent core
+        p.chord(12, 62, 84, 94, 15, 165, body_dk)
         p.ell(20, 78, 34, 90, body, OUTLINE, 0.5)          # drips
         p.ell(66, 80, 78, 90, body, OUTLINE, 0.5)
-        p.ell(23, 81, 31, 88, fade(core, 120))
-        p.ell(40, 74, 46, 80, fade(tint(body, 0.4), 130))  # trapped bubbles
-        p.ell(58, 70, 62, 74, fade(tint(body, 0.4), 130))
-        p.ell(24, 40, 42, 54, fade(tint(body, 0.7), 130))  # big gloss
-        p.ell(27, 42, 35, 48, fade(WHITE, 170))
-        p.ell(32, 52, 46, 66, WHITE, OUTLINE, 0.4)         # eyes
-        p.ell(52, 52, 66, 66, WHITE, OUTLINE, 0.4)
-        p.ell(35, 55, 43, 64, (60, 130, 90))               # iris
-        p.ell(55, 55, 63, 64, (60, 130, 90))
-        p.ell(37.5, 58, 41.5, 63, (42, 60, 48))
-        p.ell(57.5, 58, 61.5, 63, (42, 60, 48))
-        p.ell(36.5, 55.5, 39, 58, WHITE)                   # eye shine
-        p.ell(56.5, 55.5, 59, 58, WHITE)
+        p.ell(26, 42, 40, 52, (210, 245, 215))             # shine
+        p.ell(34, 54, 44, 66, WHITE, OUTLINE, 0.4)         # eyes
+        p.ell(54, 54, 64, 66, WHITE, OUTLINE, 0.4)
+        p.ell(37.5, 58, 42.5, 64, (52, 70, 56))
+        p.ell(56.5, 58, 61.5, 64, (52, 70, 56))
         p.arc(42, 66, 56, 76, 20, 160, (52, 70, 56), 1.0)  # happy-evil grin
-        p.arc(44, 66, 54, 73, 30, 150, fade(WHITE, 160), 0.5)
     elif kind == "bat":
         body = (150, 120, 200)
         body_dk = (120, 92, 170)
         wing = (100, 76, 150)
-        wing_hi = (122, 96, 176)
-        for pts, mirror in ((((14, 44), (2, 26), (22, 34), (30, 26), (38, 40)), 0),
-                            (((82, 44), (94, 26), (74, 34), (66, 26), (58, 40)), 1)):
-            p.poly(pts, wing, OUTLINE, 0.6)
-        # wing membrane shading + bone struts
-        p.poly([(14, 42), (8, 30), (22, 35)], wing_hi)
-        p.poly([(82, 42), (88, 30), (74, 35)], wing_hi)
-        for bx, by0, by1 in ((16, 30, 42), (30, 28, 40), (80, 30, 42), (66, 28, 40)):
-            p.line(bx, by0, bx + (2 if bx < 48 else -2), by1, shade(wing, 0.7), 0.6)
+        p.poly([(14, 44), (2, 26), (22, 34), (30, 26), (38, 40)], wing, OUTLINE, 0.6)   # left wing
+        p.poly([(82, 44), (94, 26), (74, 34), (66, 26), (58, 40)], wing, OUTLINE, 0.6)  # right wing
         p.ell(28, 28, 68, 72, body, OUTLINE, 0.8)          # round body
-        p.ell(36, 48, 60, 70, tint(body, 0.25))            # belly patch
         p.poly([(34, 32), (38, 16), (46, 30)], body_dk, OUTLINE, 0.5)  # ears
         p.poly([(62, 32), (58, 16), (50, 30)], body_dk, OUTLINE, 0.5)
-        p.poly([(37, 29), (39, 21), (43, 29)], tint(body_dk, 0.35))    # inner ear
-        p.poly([(59, 29), (57, 21), (53, 29)], tint(body_dk, 0.35))
-        p.poly([(44, 44), (48, 40), (52, 44), (48, 50)], body_dk)      # chest tuft
-        p.ell(35, 42, 46, 54, (250, 220, 120), OUTLINE, 0.4)  # glowing eyes
-        p.ell(50, 42, 61, 54, (250, 220, 120), OUTLINE, 0.4)
-        p.ell(35, 42, 46, 54, fade((250, 240, 170), 90))
-        p.ell(50, 42, 61, 54, fade((250, 240, 170), 90))
-        p.ell(39, 46, 43, 51, (60, 42, 80))
-        p.ell(53, 46, 57, 51, (60, 42, 80))
-        p.ell(37.5, 44, 40, 46.5, WHITE)
-        p.ell(51.5, 44, 54, 46.5, WHITE)
-        p.poly([(42, 60), (45, 67), (48, 60)], WHITE, OUTLINE, 0.2)     # fangs
-        p.poly([(50, 60), (53, 67), (56, 60)], WHITE, OUTLINE, 0.2)
+        p.ell(36, 42, 46, 54, (250, 220, 120), OUTLINE, 0.4)  # glowing eyes
+        p.ell(52, 42, 62, 54, (250, 220, 120), OUTLINE, 0.4)
+        p.ell(39.5, 46, 43.5, 51, (60, 42, 80))
+        p.ell(54.5, 46, 58.5, 51, (60, 42, 80))
+        p.poly([(42, 60), (45, 66), (48, 60)], WHITE)       # fangs
+        p.poly([(50, 60), (53, 66), (56, 60)], WHITE)
         p.ell(38, 70, 58, 86, body_dk, OUTLINE, 0.6)        # folded feet
-        p.line(44, 74, 43, 82, shade(body_dk, 0.8), 0.5)
-        p.line(52, 74, 53, 82, shade(body_dk, 0.8), 0.5)
     elif kind == "shroom":
         cap = (215, 110, 110)
         cap_dk = (185, 84, 88)
         stem = (240, 224, 200)
         p.rrect(32, 52, 64, 88, 8, stem, OUTLINE, 0.7)      # stem/face
-        p.rrect(56, 54, 63, 86, 6, fade(shade(stem, 0.85), 110))  # side shade
-        for gy in range(56, 72, 4):                          # gills under the cap
-            p.line(34, gy, 44, gy - 2, shade(stem, 0.78), 0.5)
-            p.line(62, gy, 52, gy - 2, shade(stem, 0.78), 0.5)
         p.ell(14, 20, 82, 62, cap, OUTLINE, 0.8)            # cap
-        p.chord(14, 42, 82, 64, 15, 165, cap_dk)
-        p.arc(18, 22, 78, 58, 190, 260, tint(cap, 0.35), 1.6)  # rim light
-        for dx, dy, r in ((26, 30, 4.5), (46, 24, 5), (64, 32, 4), (36, 40, 3), (56, 42, 3.2)):
-            p.ell(dx, dy, dx + 2 * r, dy + 2 * r, (245, 230, 215))
-            p.ell(dx + 1, dy + 1, dx + r, dy + r, fade(WHITE, 160))
+        p.chord(14, 44, 82, 64, 15, 165, cap_dk)
+        for dx, dy in ((26, 30), (46, 24), (64, 32)):       # cap dots
+            p.ell(dx, dy, dx + 9, dy + 9, (245, 230, 215))
         p.arc(36, 60, 44, 70, 200, 340, (90, 62, 54), 1.0)  # grumpy brows
         p.arc(52, 60, 60, 70, 200, 340, (90, 62, 54), 1.0)
         p.ell(38, 66, 43, 72, (70, 48, 42))                 # eyes
         p.ell(53, 66, 58, 72, (70, 48, 42))
-        p.ell(38.8, 67, 40.4, 68.6, fade(WHITE, 200))
-        p.ell(53.8, 67, 55.4, 68.6, fade(WHITE, 200))
-        p.ell(35, 72, 40, 76, fade((235, 160, 150), 90))    # flush
-        p.ell(56, 72, 61, 76, fade((235, 160, 150), 90))
         p.arc(40, 76, 56, 84, 200, 340, (120, 70, 60), 1.0) # frown
     elif kind == "fox":
         fur = (216, 130, 70)
@@ -677,33 +425,15 @@ def render_monster(kind):
         cream = (245, 226, 200)
         p.poly([(26, 34), (32, 10), (44, 30)], fur, OUTLINE, 0.6)   # ears
         p.poly([(70, 34), (64, 10), (52, 30)], fur, OUTLINE, 0.6)
-        p.poly([(28, 22), (32, 10), (36, 22)], fur_dk)              # dark tips
-        p.poly([(68, 22), (64, 10), (60, 22)], fur_dk)
-        p.poly([(31, 29), (34, 17), (40, 28)], (240, 190, 190))     # inner ear
-        p.poly([(65, 29), (62, 17), (56, 28)], (240, 190, 190))
+        p.poly([(30, 30), (34, 16), (41, 28)], fur_dk)
+        p.poly([(66, 30), (62, 16), (55, 28)], fur_dk)
         p.ell(22, 26, 74, 70, fur, OUTLINE, 0.8)                    # head
-        p.chord(58, 34, 76, 66, 300, 60, fade(fur_dk, 110))         # cheek shade
-        p.poly([(24, 48), (16, 52), (26, 56)], fur)                 # cheek fluff
-        p.poly([(72, 48), (80, 52), (70, 56)], fur)
-        p.poly([(42, 26), (48, 22), (54, 26), (48, 32)], fur_dk)    # forehead mark
         p.poly([(30, 58), (48, 84), (66, 58)], cream, OUTLINE, 0.6) # muzzle
         p.ell(44, 64, 52, 72, (70, 46, 40))                         # nose
-        p.ell(45.5, 65.5, 48, 68, fade(WHITE, 170))                 # nose shine
-        # sly half-lidded eyes with amber irises
-        p.ell(30, 44, 44, 56, WHITE, OUTLINE, 0.3)
-        p.ell(52, 44, 66, 56, WHITE, OUTLINE, 0.3)
-        p.ell(33, 47, 41, 56, (226, 164, 60))
-        p.ell(55, 47, 63, 56, (226, 164, 60))
-        p.ell(35.5, 49, 38.5, 54, (60, 38, 32))
-        p.ell(57.5, 49, 60.5, 54, (60, 38, 32))
-        p.ell(34.5, 47.5, 36.5, 49.5, WHITE)
-        p.ell(56.5, 47.5, 58.5, 49.5, WHITE)
-        p.arc(29, 42, 45, 52, 200, 340, (60, 38, 32), 1.2)          # lids
-        p.arc(51, 42, 67, 52, 200, 340, (60, 38, 32), 1.2)
+        p.arc(30, 44, 44, 54, 200, 340, (60, 38, 32), 1.2)          # sly eyes
+        p.arc(52, 44, 66, 54, 200, 340, (60, 38, 32), 1.2)
         p.ell(8, 62, 30, 86, fur, OUTLINE, 0.6)                     # tail curl
-        p.arc(10, 64, 28, 84, 90, 220, fur_dk, 0.8)
         p.ell(6, 66, 20, 82, cream)
-        p.ell(8, 69, 16, 78, fade(WHITE, 140))
     elif kind == "ghost":
         body = (222, 226, 240)
         body_dk = (188, 194, 216)
@@ -712,53 +442,27 @@ def render_monster(kind):
         for wx in (24, 36, 48, 60):                                 # wavy hem
             p.chord(wx, 68, wx + 12, 84, 0, 180, body)
         p.chord(28, 40, 68, 76, 15, 165, body_dk)                   # inner shade
-        for fx in (34, 44, 58):                                     # sheet folds
-            p.arc(fx, 44, fx + 6, 78, 60, 140, fade(shade(body_dk, 0.9), 120), 0.6)
-        p.arc(30, 18, 62, 50, 200, 260, tint(body, 0.5), 1.2)       # top sheen
-        p.ell(34, 32, 46, 48, fade((120, 120, 170), 70))            # eye glow
-        p.ell(52, 32, 64, 48, fade((120, 120, 170), 70))
         p.ell(36, 34, 46, 48, (60, 60, 84))                         # hollow eyes
         p.ell(52, 34, 62, 48, (60, 60, 84))
-        p.ell(38, 36, 42, 40, (20, 20, 36))
-        p.ell(54, 36, 58, 40, (20, 20, 36))
         p.ell(44, 52, 54, 62, (60, 60, 84))                         # wail mouth
-        p.ell(46, 54, 52, 60, (20, 20, 36))
         p.line(14, 30, 22, 26, body_dk, 0.8)                        # wisps
         p.line(74, 28, 82, 24, body_dk, 0.8)
-        p.ell(12, 46, 16, 50, fade(body, 160))                      # drifting drops
-        p.ell(80, 44, 84, 48, fade(body, 160))
-        p.ell(78, 60, 81, 63, fade(body, 130))
     elif kind == "golem":
         stone = (146, 148, 164)
         stone_dk = (116, 118, 136)
-        stone_hi = tint(stone, 0.22)
         moss = (96, 128, 100)
         p.rrect(26, 14, 70, 50, 6, stone, OUTLINE, 0.8)             # head block
-        p.rrect(28, 15, 68, 22, 4, stone_hi)                        # top bevel
         p.rrect(18, 46, 78, 88, 8, stone, OUTLINE, 0.8)             # body block
-        p.rrect(20, 48, 76, 56, 6, stone_hi)                        # chest bevel
         p.rrect(8, 50, 24, 78, 5, stone_dk, OUTLINE, 0.6)           # arms
         p.rrect(72, 50, 88, 78, 5, stone_dk, OUTLINE, 0.6)
-        p.rrect(7, 72, 25, 84, 4, stone, OUTLINE, 0.5)              # fists
-        p.rrect(71, 72, 89, 84, 4, stone, OUTLINE, 0.5)
         p.chord(18, 66, 78, 90, 15, 165, stone_dk)                  # lower shade
-        p.ell(31, 23, 47, 39, fade((250, 214, 120), 60))            # eye halo
-        p.ell(49, 23, 65, 39, fade((250, 214, 120), 60))
         p.ell(34, 26, 44, 36, (250, 214, 120))                      # glowing eyes
         p.ell(52, 26, 62, 36, (250, 214, 120))
-        p.ell(37, 29, 41, 33, (120, 90, 40))
-        p.ell(55, 29, 59, 33, (120, 90, 40))
-        p.arc(30, 20, 46, 28, 200, 340, stone_dk, 0.9)              # heavy brow
-        p.arc(50, 20, 66, 28, 200, 340, stone_dk, 0.9)
         p.line(40, 44, 56, 44, stone_dk, 1.2)                       # stern mouth
         p.line(30, 56, 40, 66, stone_dk, 0.8)                       # cracks
-        p.line(34, 62, 38, 58, stone_dk, 0.6)
         p.line(62, 60, 70, 70, stone_dk, 0.8)
         p.ell(24, 46, 36, 54, moss)                                 # moss patches
-        p.ell(26, 48, 32, 52, tint(moss, 0.25))
         p.ell(58, 80, 70, 88, moss)
-        p.ell(61, 82, 66, 86, tint(moss, 0.25))
-        p.ell(60, 16, 68, 21, moss)                                 # mossy crown
     return img.resize((MW, MH), Image.LANCZOS)
 
 
