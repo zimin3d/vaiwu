@@ -103,7 +103,9 @@ public:
     void cure();
 
     // Tap on the sprite while she sleeps: she wakes up (a little grumpy).
-    // Returns true if she was actually sleeping.
+    // Returns true if she was actually sleeping. The pet stays awake for a
+    // short grace period even if her energy is still below the forced-sleep
+    // threshold, so the player always has time to feed or cure her.
     bool wake();
 
     [[nodiscard]] Emotion emotion() const;
@@ -153,7 +155,8 @@ private:
     std::uint64_t lastTickMs_{0};
     std::uint64_t ageMsRemainder_{0};
     RpgProgress rpg_{};
-    float rpgRegenPool_{0.0f}; // minutes accumulated toward HP/MP regen
+    float rpgRegenPool_{0.0f};     // minutes accumulated toward HP/MP regen
+    float wakeGraceMinutes_{0.0f}; // forced sleep suppressed until it hits 0
 };
 
 } // namespace vaiwu::game

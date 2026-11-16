@@ -16,6 +16,12 @@ constexpr float kDisciplinePerMin = 1.0f / 5.0f;
 constexpr float kSleepRegenPerMin = 2.0f;
 
 constexpr float kForcedSleepEnergy = 15.0f;
+constexpr float kPlayMinEnergy = 20.0f;
+constexpr float kPlayEnergyCost = 8.0f;
+// After a manual wake-up the pet stays awake this long even while her energy
+// is still below kForcedSleepEnergy. Without it, wake() would be undone by the
+// next tick and a sick, exhausted pet could not be fed or treated at all.
+constexpr float kWakeGraceMinutes = 2.0f;
 constexpr float kSadThreshold = 20.0f;
 constexpr float kCapriceDiscipline = 20.0f;
 constexpr float kHappyThreshold = 75.0f;
@@ -39,6 +45,7 @@ void VaiwuPet::startNew(CharacterId id, const std::string& name, std::uint64_t n
     rpg_ = RpgProgress{};
     normalizeRpg(character_, rpg_);
     rpgRegenPool_ = 0.0f;
+    wakeGraceMinutes_ = 0.0f;
 }
 
 void VaiwuPet::tick(std::uint64_t nowMs)
@@ -119,6 +126,12 @@ void VaiwuPet::applyDecay(float minutes)
         return;
     }
 
+    // A manual wake-up buys a short awake window even at low energy, so the
+    // player can actually reach the care actions before she dozes off again.
+    if (wakeGraceMinutes_ > 0.0f) {
+        wakeGraceMinutes_ = std::max(0.0f, wakeGraceMinutes_ - minutes);
+    }
+
     // Strength = efficient body (hunger), vitality = stamina (energy),
     // magic = self-entertainment (mood) - see the spec in VaiwuPet.hpp.
     stats_.hunger = clamp01(stats_.hunger - kHungerPerMin * statRelief(bonus.str) * minutes);
@@ -133,7 +146,7 @@ void VaiwuPet::applyDecay(float minutes)
     }
     stats_.discipline = clamp01(stats_.discipline - disciplineRate * minutes);
 
-    if (stats_.energy <= kForcedSleepEnergy) {
+    if (wakeGraceMinutes_ <= 0.0f && stats_.energy <= kForcedSleepEnergy) {
         life_ = LifeState::Sleeping;
     }
 }
@@ -198,15 +211,18 @@ ActionResult VaiwuPet::startPlay()
 {
     if (life_ == LifeState::Dead) return ActionResult::RefusedDead;
     if (life_ == LifeState::Sleeping) return ActionResult::RefusedSleeping;
-    if (stats_.energy < 20.0f) return ActionResult::TooTired;
+    if (stats_.energy < kPlayMinEnergy) return ActionResult::TooTired;
+    // The round pays its energy cost up front, so refuse it when the payment
+    // alone would put her back to sleep: the caller would cancel immediately
+    // and the energy would be gone without a game being played.
+    if (stats_.energy - kPlayEnergyCost <= kForcedSleepEnergy) {
+        return ActionResult::TooTired;
+    }
 
     // Games are meant to be the fun part - keep them cheap (was 15.0f,
     // which drained the pet after just a few rounds).
-    stats_.energy = clamp01(stats_.energy - 8.0f);
+    stats_.energy = clamp01(stats_.energy - kPlayEnergyCost);
     stats_.weightKg = std::max(1.0f, stats_.weightKg - 2.0f);
-    if (stats_.energy <= kForcedSleepEnergy) {
-        life_ = LifeState::Sleeping;
-    }
     refreshDerivedState();
     dirty_ = true;
     return ActionResult::Ok;
@@ -283,6 +299,7 @@ bool VaiwuPet::wake()
         return false;
     }
     life_ = LifeState::Awake;
+    wakeGraceMinutes_ = kWakeGraceMinutes;
     // Being woken up early is mildly annoying (unless fully rested anyway).
     if (stats_.energy < 80.0f) {
         stats_.happiness = clamp01(stats_.happiness - 3.0f);
@@ -460,6 +477,7 @@ bool VaiwuPet::deserialize(const std::string& data, std::uint64_t nowMs)
     rpg_ = rpg;
     normalizeRpg(character_, rpg_);
     rpgRegenPool_ = 0.0f;
+    wakeGraceMinutes_ = 0.0f;
     started_ = true;
     dirty_ = false;
     lastTickMs_ = nowMs;
