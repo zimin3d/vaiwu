@@ -156,6 +156,27 @@ constexpr const char* kPhrases[kCharacterCount][kContexts][kVariants] = {
         {"Rolled right over it! Ho-ho!", "Crust: undefeated! Loot: acquired!", "I got away from THAT one too!"},
         {"Ohh... I am all crumbly now...", "It nearly ATE me! Rude!", "Rolled home. Slowly. Very slowly."},
     },
+    // ---- Vesper: playful flirty demoness (30+) ----
+    {
+        {"Well, well... you came back to me. Did you miss me, darling?", "Oh, it's you. I was just getting cozy in the dark.", "Hey there, darling. Stay a while?"},
+        {"Wine? You know exactly how to win over a demoness.", "Mm... sweet and warm, just like your attention.", "A snack from you tastes better than any feast."},
+        {"You play so well... I'm starting to enjoy losing.", "Ooh, a game with you? Don't go easy on me!", "Let's play again. I might let you win. Maybe."},
+        {"Freshly cleaned and ready to tease you again.", "Such bubbles... help me dry off, darling.", "Clean skin, cozy mood. Perfect."},
+        {"One moment... and no peeking, darling.", "Hehe, a little privacy please. I'll be right back.", "One sec. Ask me again later with a wink."},
+        {"Keep talking like that and I'll start purring.", "I love your voice in the dark. So cozy.", "Tell me more... I'm all ears tonight."},
+        {"Mm... come closer, and don't let go yet.", "Your arms are the coziest place in the whole night.", "Careful, I might not let you leave."},
+        {"Hmm, you're spoiling me... I like it.", "You're good at this. Don't stop yet.", "Gentle and sweet... just how I like it."},
+        {"Medicine? Only if you stay and take care of me.", "Bitter, but you're here... I forgive you.", "Thank you. I owe you one, darling."},
+        {"Not hungry... unless you feed me yourself.", "Pass. I'm waiting for something sweeter.", "Maybe later, when you ask nicely."},
+        {"Zzz... dreaming of midnight waltzes...", "Zzz... don't leave me alone in the dark...", "Mm... five more minutes, darling... zzz"},
+        {"I feel woozy... come sit by me, won't you?", "*cough* I'm not dramatic. You're just slow to notice.", "Even demons catch colds... sigh."},
+        {"The night feels so empty without someone to tease.", "Don't look so serious. I'm fine. Almost.", "I miss your attention... just a little."},
+        {"Fading into the dark... see you next night?", "...I'll wait for you in the shadows.", "Don't forget me, darling..."},
+        {"Hey! Poking a demoness is risky, you know?", "Hehe... that tickles. Do it again, darling.", "Oh, so bold! I like that."},
+        {"You woke me up... now you have to keep me company.", "Mm? Already? Fine, you win this round.", "You interrupted my dream. You owe me a cuddle."},
+        {"Easy win! Did you see me wink at that monster?", "Loot and a wink! Best night ever, darling.", "Back victorious... and a little bolder than usual."},
+        {"Ugh... that monster hit too hard. Carry me home?", "I fell, but I'll be back. Don't worry, sweetie.", "I lost the fight. My pride hurts more than my wings."},
+    },
 };
 
 // Russian phrase table, same [character][context][variant] layout. Requires
@@ -307,6 +328,27 @@ constexpr const char* kPhrasesRu[kCharacterCount][kContexts][kVariants] = {
         {"Кто посмел будить самого круглого?!", "Я не спал! Я... подходил на дрожжах!", "Ещё пять минуток на подоконнике..."},
         {"Прокатился прямо по нему! Хо-хо!", "Корочка непобедима! Добыча взята!", "И от ЭТОГО я ушёл!"},
         {"Ох... я весь раскрошился...", "Оно чуть меня не СЪЕЛО! Наглость!", "Прикатился домой. Медленно. Очень медленно."},
+    },
+    // ---- Vesper: игривая флиртующая демоница (30+) ----
+    {
+        {"Ну надо же... вернулся ко мне. Скучал, дорогой?", "А, это ты. Я как раз устроилась поуютнее в темноте.", "Привет, дорогой... Останешься ненадолго?"},
+        {"Вино? Ты точно знаешь, как покорить демоницу.", "Мм... сладко и тепло, как твоё внимание.", "Твоё угощение вкуснее любого пира."},
+        {"Ты так хорошо играешь... начинаю любить проигрывать.", "Ой, игра с тобой? Не поддавайся, пожалуйста!", "Давай ещё раз. Может, и дам тебе выиграть."},
+        {"Чистенькая и готова тебя снова подразнить.", "Сколько пузырьков... помоги высушить, дорогой.", "Чистая кожа, уютное настроение. Идеально."},
+        {"Одну минутку... и не подглядывай, дорогой.", "Хе-хе, немного приватности, пожалуйста. Я скоро.", "Секунду. Спроси меня потом, с хитрой улыбкой."},
+        {"Говори так и дальше, и я начну мурлыкать.", "Обожаю твой голос в темноте. Так уютно.", "Расскажи ещё... сегодня я вся внимание."},
+        {"Мм... подойди ближе и не отпускай пока.", "Твои руки - самое уютное место во всей ночи.", "Осторожно, могу и не отпустить тебя."},
+        {"Ты меня балуешь... и мне это нравится.", "Ты хорошо справляешься. Не останавливайся пока.", "Нежно и мило... как я люблю."},
+        {"Лекарство? Только если останешься и позаботишься обо мне.", "Горько, зато ты рядом... прощаю.", "Спасибо. Я теперь твоя должница, дорогой."},
+        {"Не голодна... разве что покормишь сам.", "Пас. Жду чего-нибудь послаще.", "Потом, когда попросишь поласковее."},
+        {"Ззз... снится полночный вальс...", "Ззз... не оставляй меня одну в темноте...", "Мм... ещё пять минуток, дорогой... ззз"},
+        {"Меня немного кружит... сядь рядом, а?", "*кхе* Я не драматизирую, ты просто медленно замечаешь.", "Даже демоницы простужаются... вздох."},
+        {"Ночью так пусто без того, кого можно подразнить...", "Не смотри так серьёзно. Я в порядке. Почти.", "Мне не хватает твоего внимания... немного."},
+        {"Растворяюсь во тьме... увидимся следующей ночью?", "...Буду ждать тебя в тени.", "Не забывай меня, дорогой..."},
+        {"Эй! Тыкать демоницу опасно, знаешь ли?", "Хе-хе... щекотно. Сделай так ещё раз, дорогой.", "Ого, какой смелый! Мне нравится."},
+        {"Ты меня разбудил... теперь будешь развлекать.", "Мм? Уже? Ладно, в этот раз ты выиграл.", "Прервал мой сон. Должен мне обнимашки."},
+        {"Лёгкая победа! Видел, как я подмигнула тому монстру?", "Добыча и подмигивание! Лучший вечер, дорогой.", "Вернулась с победой... и чуть смелее обычного."},
+        {"Ой... монстр слишком сильно ударил. Донесёшь меня домой?", "Упала, но я вернусь. Не переживай, милый.", "Проиграла бой. Гордость пострадала сильнее крыльев."},
     },
 };
 

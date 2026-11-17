@@ -21,6 +21,9 @@ constexpr CharacterTraits kTraits[kCharacterCount] = {
     // Rolls everywhere without tiring and sings his little song, but sulks
     // hard when underfed (a hungry bun is an angry bun).
     {"Kolobok", "jolly boastful round bread bun from a Russian folk tale, rolls everywhere, sings, brags about escaping everyone", "smetana", 1.00f, 0.80f, 1.10f, 1.00f, 1.00f, false, true, 0xF2C14E},
+    // Vesper: an adult (30+) demoness who is playful and teasing, loves cozy
+    // nights and attention. Flirty in a light way, never suggestive.
+    {"Vesper", "playful, teasing demoness who loves cozy nights and attention, flirty in a light way", "wine", 0.95f, 1.15f, 1.25f, 1.20f, 0.90f, false, true, 0x9D4EDD},
 };
 } // namespace
 

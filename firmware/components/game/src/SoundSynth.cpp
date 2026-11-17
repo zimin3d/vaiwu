@@ -126,6 +126,7 @@ VoiceProfile voiceProfileFor(CharacterId id)
     case CharacterId::Akane:   return {700.0f, 0.34f, 46, 12, false}; // playful
     case CharacterId::Unicorn: return {820.0f, 0.22f, 58, 18, true};  // airy, high
     case CharacterId::Kolobok: return {380.0f, 0.20f, 60, 14, false}; // round, low
+    case CharacterId::Vesper:  return {600.0f, 0.24f, 54, 16, true};  // husky, teasing
     case CharacterId::Aoi:
     default:                   return {620.0f, 0.16f, 60, 20, true};  // calm
     }

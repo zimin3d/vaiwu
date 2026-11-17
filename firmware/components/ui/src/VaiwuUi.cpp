@@ -390,9 +390,12 @@ const char* tr_(Str id)
 
 const lv_image_dsc_t* spriteFor(CharacterId character, Emotion emotion)
 {
+    // vaiwu_sprites holds the procedural sprites of the first seven characters.
+    // Characters added later (Vesper) show Aoi until their sprites are generated.
+    constexpr unsigned kSpriteCharacterRows = 7U;
     unsigned c = static_cast<unsigned>(character);
     unsigned e = static_cast<unsigned>(emotion);
-    if (c >= static_cast<unsigned>(game::kCharacterCount)) c = 0U;
+    if (c >= kSpriteCharacterRows) c = 0U;
     if (e >= 7U) e = 0U;
     return vaiwu_sprites[c][e];
 }

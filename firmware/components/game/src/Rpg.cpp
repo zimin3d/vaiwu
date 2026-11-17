@@ -17,6 +17,7 @@ constexpr RpgStats kBase[kCharacterCount] = {
     {2, 2, 4, 2, 3}, // Akane: tricky skirmisher
     {1, 4, 1, 4, 3}, // Uni: sturdy healer-mage
     {2, 4, 2, 1, 4}, // Kolobok: round lucky tank ("I rolled away from everyone")
+    {2, 2, 3, 4, 2}, // Vesper: dark sorceress, fast caster
 };
 
 // Small deterministic PRNG steps derived from the per-turn seed.
@@ -44,6 +45,7 @@ SkillKind skillFor(CharacterId id)
         SkillKind::Lucky,  // Akane: fox tricks (and pickpocketing)
         SkillKind::Heal,   // Uni: unicorn healing magic
         SkillKind::Guard,  // Kolobok: rolls into a crust-hard ball
+        SkillKind::Blast,  // Vesper: dark bolts of playful mischief
     };
     const auto index = static_cast<unsigned>(id);
     return kSkills[index < static_cast<unsigned>(kCharacterCount) ? index : 0U];
