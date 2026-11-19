@@ -38,6 +38,9 @@ void testDecayRates()
     CHECK(std::fabs(pet.stats().energy - (100.0f - 2.6f)) < 0.05f);
     // happiness: 1%/1.5min -> -1.333
     CHECK(std::fabs(pet.stats().happiness - (80.0f - 2.0f / 1.5f)) < 0.05f);
+    // discipline: softened 1%/10min -> -0.2 (spec 1%/5min made the only stat
+    // without a recovery mechanic hit caprice in a single day).
+    CHECK(std::fabs(pet.stats().discipline - (60.0f - 0.2f)) < 0.01f);
     CHECK(pet.stats().ageSeconds == 120);
 }
 
@@ -140,10 +143,39 @@ void testPlayFlow()
     CHECK(std::fabs(pet.stats().weightKg - (weightBefore - 2.0f)) < 0.01f);
     CHECK(std::fabs(pet.stats().energy - (energyBefore - 8.0f)) < 0.01f); // cheap games
     const float happinessBefore = pet.stats().happiness;
+    const float disciplineBefore = pet.stats().discipline;
     pet.applyPlayResult(true);
     // Hina: +20 * 1.3 = +26 happiness (clamped at 100).
     CHECK(pet.stats().happiness >= happinessBefore);
     CHECK(pet.stats().happiness <= 100.0f);
+    // Symmetric discipline stakes: win +3, loss -3 (the old +2/-5 made every
+    // round a net drain, so active play pushed discipline to caprice).
+    CHECK(std::fabs(pet.stats().discipline - (disciplineBefore + 3.0f)) < 0.01f);
+    pet.applyPlayResult(false);
+    CHECK(std::fabs(pet.stats().discipline - disciplineBefore) < 0.01f);
+}
+
+void testSleepRestoresDiscipline()
+{
+    VaiwuPet pet;
+    pet.startNew(CharacterId::Rin, "R", 0);
+    // Drive Rin to forced sleep (energy 100 -> 15 at 1%/min = 85 minutes).
+    std::uint64_t now = 0;
+    while (pet.life() != LifeState::Sleeping && now < 400ULL * kMinute) {
+        now += kMinute;
+        pet.tick(now);
+    }
+    CHECK(pet.life() == LifeState::Sleeping);
+    const float disciplineBefore = pet.stats().discipline;
+    CHECK(disciplineBefore < 60.0f); // it decayed while awake
+    // 10 minutes of sleep restore exactly +10 discipline (never erode it).
+    for (int minute = 0; minute < 10; ++minute) {
+        now += kMinute;
+        pet.tick(now);
+    }
+    CHECK(pet.life() == LifeState::Sleeping);
+    CHECK(std::fabs(pet.stats().discipline - (disciplineBefore + 10.0f)) < 0.01f);
+    CHECK(pet.stats().discipline <= 100.0f);
 }
 
 void testCapriceRefusesFood()
@@ -425,6 +457,7 @@ int main()
     testDeathByHunger();
     testSicknessAndYukiResistance();
     testPlayFlow();
+    testSleepRestoresDiscipline();
     testCapriceRefusesFood();
     testBodyShape();
     testEconomy();

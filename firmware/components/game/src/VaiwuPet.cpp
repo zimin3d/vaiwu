@@ -11,9 +11,16 @@ namespace {
 constexpr float kHungerPerMin = 1.0f / 2.0f;
 constexpr float kHappinessPerMin = 1.0f / 1.5f;
 constexpr float kEnergyPerMin = 1.0f;
-constexpr float kDisciplinePerMin = 1.0f / 5.0f;
-// While asleep: energy regenerates 1% / 30s, hunger drains at half speed.
+// Discipline: the spec says 1%/5min, but discipline is the only stat without a
+// burst recovery, so the raw spec rate drained the bar to caprice (<20) in
+// 6.7h of wake time. Softened to 1%/10min and sleep now restores +1%/min
+// (see kSleepDisciplineRegenPerMin).
+constexpr float kDisciplinePerMin = 1.0f / 10.0f;
+// While asleep: energy regenerates 1% / 30s, hunger drains at half speed and
+// discipline recovers (1%/min): the "режим" (sleep schedule) is what rebuilds
+// what the awake day erodes.
 constexpr float kSleepRegenPerMin = 2.0f;
+constexpr float kSleepDisciplineRegenPerMin = 1.0f;
 
 constexpr float kForcedSleepEnergy = 15.0f;
 constexpr float kPlayMinEnergy = 20.0f;
@@ -120,6 +127,10 @@ void VaiwuPet::applyDecay(float minutes)
             - kHungerPerMin * 0.5f * statRelief(bonus.str) * minutes);
         stats_.energy = clamp01(stats_.energy
             + kSleepRegenPerMin * t.sleepRegenMult * agiBoost * minutes);
+        // Sleep is the discipline recovery window: a ~43min nap restores
+        // +43 discipline instead of merely freezing it.
+        stats_.discipline = clamp01(stats_.discipline
+            + kSleepDisciplineRegenPerMin * minutes);
         if (stats_.energy >= 100.0f) {
             life_ = LifeState::Awake; // fully rested, wakes up on her own
         }
@@ -232,12 +243,14 @@ void VaiwuPet::applyPlayResult(bool success)
 {
     if (life_ == LifeState::Dead) return;
     const CharacterTraits& t = traits();
+    // Symmetric stakes (+3/-3): the old +2/-5 made every round a net drain
+    // (EV -1.5 at 50% wins), so active play pushed discipline to caprice.
     if (success) {
         addHappiness(20.0f * t.playHappinessMult);
-        stats_.discipline = clamp01(stats_.discipline + 2.0f);
+        stats_.discipline = clamp01(stats_.discipline + 3.0f);
     } else {
         addHappiness(5.0f * t.playHappinessMult);
-        stats_.discipline = clamp01(stats_.discipline - 5.0f);
+        stats_.discipline = clamp01(stats_.discipline - 3.0f);
     }
     refreshDerivedState();
     dirty_ = true;
