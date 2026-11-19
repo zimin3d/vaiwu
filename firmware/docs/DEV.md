@@ -247,6 +247,10 @@ Done in v4.7 (economy depth):
   clears ownership; in the UI a LONG PRESS on an inventory slot sells what
   is worn there (tap still cycles). Hint line under the slots.
 - Save V5 = V4 + mpPotions; V4/V3/V2/V1 all still load (tested).
+- Save V6 = V5 + the carried-consumables bag (12 counts indexed by ShopItem
+  id). The Android app buys consumables into the bag (`buyShopItemToBag`)
+  and applies them later with `useShopItem`; the ESP firmware keeps the
+  instant `buyShopItem` behaviour. Older V1-V5 saves load with an empty bag.
 
 Done in v4.6 (dungeon runs):
 - `Rpg`: DungeonRun (3-5 rooms), spawnDungeonFoe (+10% stats per room,

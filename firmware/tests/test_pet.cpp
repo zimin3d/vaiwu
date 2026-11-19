@@ -239,13 +239,40 @@ void testEconomy()
     CHECK(pet.spendCoins(6));
     CHECK(pet.coins() == 4);
 
-    // Shop: affordable item applies its effect and deducts coins.
-    pet.addCoins(20); // 24 total
-    const float hungerBefore = pet.stats().hunger;
+    // Shop: a consumable goes into the bag, not straight into the stats.
+    VaiwuPet shopper;
+    CHECK(shopper.deserialize("V2 2 50 50 90 50 15 0 0 0 24\nShopper", 0));
+    const float hungerBefore = shopper.stats().hunger;
     const auto& tasty = shopItem(ShopItem::TastyFood);
-    CHECK(buyShopItem(pet, ShopItem::TastyFood));
-    CHECK(pet.coins() == 24 - tasty.price);
-    CHECK(pet.stats().hunger >= hungerBefore); // gift raised hunger (or capped)
+    CHECK(buyShopItemToBag(shopper, ShopItem::TastyFood));
+    CHECK(shopper.coins() == 24 - tasty.price);
+    CHECK(shopper.consumableCount(static_cast<int>(ShopItem::TastyFood)) == 1);
+    CHECK(shopper.stats().hunger == hungerBefore); // still waiting in the bag
+    CHECK(useShopItem(shopper, ShopItem::TastyFood) == UseResult::Ok);
+    CHECK(shopper.consumableCount(static_cast<int>(ShopItem::TastyFood)) == 0);
+    CHECK(shopper.stats().hunger > hungerBefore);
+    CHECK(useShopItem(shopper, ShopItem::TastyFood) == UseResult::NotOwned);
+
+    // An energy drink at full energy is not wasted: the bag accepts it, but
+    // the buy-and-feed shortcut refuses to spend a single coin.
+    VaiwuPet full;
+    full.startNew(CharacterId::Aoi, "Full", 0);
+    full.addCoins(50);
+    CHECK(full.stats().energy >= 99.0f);
+    CHECK(!canUseShopItem(full, ShopItem::EnergyDrink));
+    CHECK(buyAndUseShopItem(full, ShopItem::EnergyDrink) == UseResult::NotApplicable);
+    CHECK(full.coins() == 50);
+    CHECK(buyShopItemToBag(full, ShopItem::EnergyDrink));
+    CHECK(full.consumableCount(static_cast<int>(ShopItem::EnergyDrink)) == 1);
+    CHECK(full.coins() == 50 - shopItem(ShopItem::EnergyDrink).price);
+
+    // The ESP firmware keeps its instant purchase: the dish is eaten at once
+    // and never appears in the bag.
+    VaiwuPet instant;
+    CHECK(instant.deserialize("V2 2 50 50 90 50 15 0 0 0 10\nInstant", 0));
+    CHECK(buyShopItem(instant, ShopItem::TastyFood));
+    CHECK(instant.consumableCount(static_cast<int>(ShopItem::TastyFood)) == 0);
+    CHECK(instant.stats().hunger > 50.0f);
 
     // Every shop item has a sane price and a localized name.
     for (int i = 0; i < kShopItemCount; ++i) {
@@ -264,7 +291,9 @@ void testEconomy()
     CHECK(ill.deserialize("V2 0 8 50 90 50 15 0 0 1 30\nSick", 0)); // hunger 8 -> sick
     CHECK(ill.isSick());
     CHECK(ill.coins() == 30);
-    CHECK(buyShopItem(ill, ShopItem::Medicine));
+    CHECK(buyShopItemToBag(ill, ShopItem::Medicine));
+    CHECK(ill.isSick());                      // in the bag, not used yet
+    CHECK(useShopItem(ill, ShopItem::Medicine) == UseResult::Ok);
     CHECK(!ill.isSick());                     // cured
     // cure() directly is a no-op when healthy.
     VaiwuPet well;
@@ -281,11 +310,14 @@ void testSerializeRoundTrip()
     pet.tick(10 * kMinute);
     CHECK(pet.feed() == ActionResult::Ok);
     pet.addCoins(42);
+    CHECK(buyShopItemToBag(pet, ShopItem::Sushi)); // carried in the bag
     const std::string data = pet.serialize();
     CHECK(!data.empty());
+    CHECK(data.rfind("V6 ", 0) == 0);
 
     VaiwuPet restored;
     CHECK(restored.deserialize(data, 12345));
+    CHECK(restored.consumableCount(static_cast<int>(ShopItem::Sushi)) == 1);
     CHECK(restored.character() == CharacterId::Rin);
     CHECK(restored.name() == std::string("My Rin-chan"));
     CHECK(std::fabs(restored.stats().hunger - pet.stats().hunger) < 0.02f);

@@ -384,6 +384,39 @@ void VaiwuPet::applyGift(float hunger, float happiness, float energy, float weig
     dirty_ = true;
 }
 
+int VaiwuPet::consumableCount(int itemId) const
+{
+    if (itemId < 0 || itemId >= kConsumableSlots) {
+        return 0;
+    }
+    return consumables_[itemId];
+}
+
+bool VaiwuPet::addConsumable(int itemId, int amount)
+{
+    if (itemId < 0 || itemId >= kConsumableSlots || amount <= 0) {
+        return false;
+    }
+    const int current = consumables_[itemId];
+    const int next = std::min(99, current + amount);
+    if (next == current) {
+        return false; // bag slot is full
+    }
+    consumables_[itemId] = static_cast<std::uint8_t>(next);
+    dirty_ = true;
+    return true;
+}
+
+bool VaiwuPet::takeConsumable(int itemId)
+{
+    if (itemId < 0 || itemId >= kConsumableSlots || consumables_[itemId] == 0) {
+        return false;
+    }
+    --consumables_[itemId];
+    dirty_ = true;
+    return true;
+}
+
 BodyShape VaiwuPet::bodyShape() const
 {
     if (stats_.weightKg < 10.0f) return BodyShape::Thin;
@@ -397,9 +430,10 @@ std::string VaiwuPet::serialize() const
     if (!started_) {
         return {};
     }
-    char buf[352];
-    // V5 = V4 + the mana-potion count.
-    std::snprintf(buf, sizeof(buf), "V5 %d %.2f %.2f %.2f %.2f %.2f %u %d %d %u %d %d %d %d %d %d %d %d %d %d %d %u %d %d %d %d\n",
+    char buf[512];
+    // V6 = V5 + the carried-consumables bag (kConsumableSlots counts indexed
+    // by ShopItem id, appended after the mana-potion count).
+    std::snprintf(buf, sizeof(buf), "V6 %d %.2f %.2f %.2f %.2f %.2f %u %d %d %u %d %d %d %d %d %d %d %d %d %d %d %u %d %d %d %d",
         static_cast<int>(character_),
         static_cast<double>(stats_.hunger), static_cast<double>(stats_.happiness),
         static_cast<double>(stats_.energy), static_cast<double>(stats_.discipline),
@@ -412,7 +446,13 @@ std::string VaiwuPet::serialize() const
         rpg_.hp, rpg_.mp, rpg_.potions,
         static_cast<unsigned>(rpg_.equipOwned),
         rpg_.equipped[0], rpg_.equipped[1], rpg_.equipped[2], rpg_.mpPotions);
-    return std::string(buf) + name_;
+    std::string out(buf);
+    for (int i = 0; i < kConsumableSlots; ++i) {
+        out += ' ';
+        out += std::to_string(static_cast<int>(consumables_[i]));
+    }
+    out += '\n';
+    return out + name_;
 }
 
 bool VaiwuPet::deserialize(const std::string& data, std::uint64_t nowMs)
@@ -424,47 +464,68 @@ bool VaiwuPet::deserialize(const std::string& data, std::uint64_t nowMs)
     unsigned coins = 0;
     RpgProgress rpg{};
     unsigned owned = 0;
-    // V5 adds mana potions; V4 (equipment), V3 (RPG), V2 (coins) and V1
-    // saves are still accepted.
+    int carried[kConsumableSlots] = {};
+    // V6 adds the carried-consumables bag; V5 (mana potions), V4 (equipment),
+    // V3 (RPG), V2 (coins) and V1 saves are still accepted.
     int parsed = std::sscanf(data.c_str(),
-        "V5 %d %f %f %f %f %f %u %d %d %u %d %d %d %d %d %d %d %d %d %d %d %u %d %d %d %d",
+        "V6 %d %f %f %f %f %f %u %d %d %u %d %d %d %d %d %d %d %d %d %d %d %u %d %d %d %d"
+        " %d %d %d %d %d %d %d %d %d %d %d %d",
         &charId, &hunger, &happiness, &energy, &discipline, &weight, &age, &life, &sick, &coins,
         &rpg.level, &rpg.xp, &rpg.statPoints,
         &rpg.alloc.str, &rpg.alloc.vit, &rpg.alloc.agi, &rpg.alloc.mag, &rpg.alloc.luck,
         &rpg.hp, &rpg.mp, &rpg.potions,
-        &owned, &rpg.equipped[0], &rpg.equipped[1], &rpg.equipped[2], &rpg.mpPotions);
-    if (parsed != 26) {
+        &owned, &rpg.equipped[0], &rpg.equipped[1], &rpg.equipped[2], &rpg.mpPotions,
+        &carried[0], &carried[1], &carried[2], &carried[3], &carried[4], &carried[5],
+        &carried[6], &carried[7], &carried[8], &carried[9], &carried[10], &carried[11]);
+    if (parsed == 38) {
+        rpg.equipOwned = owned;
+    } else {
         rpg = RpgProgress{};
         owned = 0;
         parsed = std::sscanf(data.c_str(),
-            "V4 %d %f %f %f %f %f %u %d %d %u %d %d %d %d %d %d %d %d %d %d %d %u %d %d %d",
+            "V5 %d %f %f %f %f %f %u %d %d %u %d %d %d %d %d %d %d %d %d %d %d %u %d %d %d %d",
             &charId, &hunger, &happiness, &energy, &discipline, &weight, &age, &life, &sick, &coins,
             &rpg.level, &rpg.xp, &rpg.statPoints,
             &rpg.alloc.str, &rpg.alloc.vit, &rpg.alloc.agi, &rpg.alloc.mag, &rpg.alloc.luck,
             &rpg.hp, &rpg.mp, &rpg.potions,
-            &owned, &rpg.equipped[0], &rpg.equipped[1], &rpg.equipped[2]);
-    }
-    if (parsed == 25 || parsed == 26) {
-        rpg.equipOwned = owned;
-    } else {
-        rpg = RpgProgress{};
-        parsed = std::sscanf(data.c_str(),
-            "V3 %d %f %f %f %f %f %u %d %d %u %d %d %d %d %d %d %d %d %d %d %d",
-            &charId, &hunger, &happiness, &energy, &discipline, &weight, &age, &life, &sick, &coins,
-            &rpg.level, &rpg.xp, &rpg.statPoints,
-            &rpg.alloc.str, &rpg.alloc.vit, &rpg.alloc.agi, &rpg.alloc.mag, &rpg.alloc.luck,
-            &rpg.hp, &rpg.mp, &rpg.potions);
-    }
-    if (parsed != 21 && parsed != 25 && parsed != 26) {
-        rpg = RpgProgress{};
-        parsed = std::sscanf(data.c_str(), "V2 %d %f %f %f %f %f %u %d %d %u",
-            &charId, &hunger, &happiness, &energy, &discipline, &weight, &age, &life, &sick, &coins);
-        if (parsed != 10) {
-            coins = 0;
-            parsed = std::sscanf(data.c_str(), "V1 %d %f %f %f %f %f %u %d %d",
-                &charId, &hunger, &happiness, &energy, &discipline, &weight, &age, &life, &sick);
-            if (parsed != 9) {
-                return false;
+            &owned, &rpg.equipped[0], &rpg.equipped[1], &rpg.equipped[2], &rpg.mpPotions);
+        if (parsed == 26) {
+            rpg.equipOwned = owned;
+        } else {
+            rpg = RpgProgress{};
+            owned = 0;
+            parsed = std::sscanf(data.c_str(),
+                "V4 %d %f %f %f %f %f %u %d %d %u %d %d %d %d %d %d %d %d %d %d %d %u %d %d %d",
+                &charId, &hunger, &happiness, &energy, &discipline, &weight, &age, &life, &sick, &coins,
+                &rpg.level, &rpg.xp, &rpg.statPoints,
+                &rpg.alloc.str, &rpg.alloc.vit, &rpg.alloc.agi, &rpg.alloc.mag, &rpg.alloc.luck,
+                &rpg.hp, &rpg.mp, &rpg.potions,
+                &owned, &rpg.equipped[0], &rpg.equipped[1], &rpg.equipped[2]);
+            if (parsed == 25) {
+                rpg.equipOwned = owned;
+            } else {
+                rpg = RpgProgress{};
+                parsed = std::sscanf(data.c_str(),
+                    "V3 %d %f %f %f %f %f %u %d %d %u %d %d %d %d %d %d %d %d %d %d %d",
+                    &charId, &hunger, &happiness, &energy, &discipline, &weight, &age, &life, &sick, &coins,
+                    &rpg.level, &rpg.xp, &rpg.statPoints,
+                    &rpg.alloc.str, &rpg.alloc.vit, &rpg.alloc.agi, &rpg.alloc.mag, &rpg.alloc.luck,
+                    &rpg.hp, &rpg.mp, &rpg.potions);
+                if (parsed != 21) {
+                    rpg = RpgProgress{};
+                    parsed = std::sscanf(data.c_str(), "V2 %d %f %f %f %f %f %u %d %d %u",
+                        &charId, &hunger, &happiness, &energy, &discipline, &weight, &age, &life,
+                        &sick, &coins);
+                    if (parsed != 10) {
+                        coins = 0;
+                        parsed = std::sscanf(data.c_str(), "V1 %d %f %f %f %f %f %u %d %d",
+                            &charId, &hunger, &happiness, &energy, &discipline, &weight, &age, &life,
+                            &sick);
+                        if (parsed != 9) {
+                            return false;
+                        }
+                    }
+                }
             }
         }
     }
@@ -489,6 +550,9 @@ bool VaiwuPet::deserialize(const std::string& data, std::uint64_t nowMs)
     sick_ = sick != 0;
     rpg_ = rpg;
     normalizeRpg(character_, rpg_);
+    for (int i = 0; i < kConsumableSlots; ++i) {
+        consumables_[i] = static_cast<std::uint8_t>(std::clamp(carried[i], 0, 99));
+    }
     rpgRegenPool_ = 0.0f;
     wakeGraceMinutes_ = 0.0f;
     started_ = true;

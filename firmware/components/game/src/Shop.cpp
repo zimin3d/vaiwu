@@ -1,9 +1,64 @@
 #include "vaiwu/game/Rpg.hpp"
 #include "vaiwu/game/Shop.hpp"
 
+#include <algorithm>
+
 namespace vaiwu::game {
 
 namespace {
+
+// The carried-consumables bag is indexed by ShopItem id; every item that is
+// not equipment and not an RPG-bag potion must fit into it.
+static_assert(static_cast<int>(ShopItem::SuperEnergy) < kConsumableSlots,
+    "kConsumableSlots must cover every non-equipment, non-potion shop item");
+
+constexpr bool isConsumable(const ShopItemInfo& info)
+{
+    return info.equip < 0 && !info.potion && !info.mpPotion;
+}
+
+void applyConsumable(VaiwuPet& pet, const ShopItemInfo& info)
+{
+    pet.applyGift(info.hunger, info.happiness, info.energy, info.weightDelta);
+    if (info.cures) {
+        pet.cure();
+    }
+}
+
+// Checks shared by both purchase styles. Equipment is owned once, so a
+// duplicate is refused BEFORE any coins are spent.
+bool spendForItem(VaiwuPet& pet, const ShopItemInfo& info)
+{
+    if (!pet.alive()) {
+        return false;
+    }
+    if (info.equip >= 0 && ownsEquip(pet.rpg(), static_cast<EquipItem>(info.equip))) {
+        return false;
+    }
+    return pet.spendCoins(info.price);
+}
+
+// Equipment and potions behave the same for both purchase styles. Returns
+// false for a consumable: the caller decides whether to apply it now or bag it.
+bool grantNonConsumable(VaiwuPet& pet, const ShopItemInfo& info)
+{
+    if (info.equip >= 0) {
+        grantEquip(pet.rpg(), static_cast<EquipItem>(info.equip));
+        normalizeRpg(pet.character(), pet.rpg()); // gear may raise HP/MP maxima
+        return true;
+    }
+    if (info.potion) {
+        // Battle supplies are carried, not consumed on the spot.
+        pet.rpg().potions = pet.rpg().potions >= 99 ? 99 : pet.rpg().potions + 1;
+        return true;
+    }
+    if (info.mpPotion) {
+        pet.rpg().mpPotions = pet.rpg().mpPotions >= 99 ? 99 : pet.rpg().mpPotions + 1;
+        return true;
+    }
+    return false;
+}
+
 constexpr ShopItemInfo kItems[kShopItemCount] = {
     // price  nameId                 hunger happy energy weight  cures
     {5, Str::ShopTastyFood, 40.0f, 10.0f, 0.0f, 2.0f, false, false, -1, false},
@@ -115,37 +170,91 @@ std::uint32_t sellEquip(VaiwuPet& pet, EquipItem item)
 
 bool buyShopItem(VaiwuPet& pet, ShopItem item)
 {
+    const ShopItemInfo& info = shopItem(item);
+    if (!spendForItem(pet, info)) {
+        return false;
+    }
+    if (grantNonConsumable(pet, info)) {
+        return true;
+    }
+    // ESP-style shop: the dish is eaten right away.
+    applyConsumable(pet, info);
+    return true;
+}
+
+bool buyShopItemToBag(VaiwuPet& pet, ShopItem item)
+{
+    const ShopItemInfo& info = shopItem(item);
+    // The bag holds at most 99 of one kind: refuse BEFORE spending.
+    if (isConsumable(info) && pet.consumableCount(static_cast<int>(item)) >= 99) {
+        return false;
+    }
+    if (!spendForItem(pet, info)) {
+        return false;
+    }
+    if (grantNonConsumable(pet, info)) {
+        return true;
+    }
+    // App-style shop: the player decides when to use it.
+    pet.addConsumable(static_cast<int>(item));
+    return true;
+}
+
+bool canUseShopItem(const VaiwuPet& pet, ShopItem item)
+{
     if (!pet.alive()) {
         return false;
     }
     const ShopItemInfo& info = shopItem(item);
-    // Equipment is owned once; refuse a duplicate BEFORE spending anything
-    // (the shop UI shows it as owned).
-    if (info.equip >= 0 && ownsEquip(pet.rpg(), static_cast<EquipItem>(info.equip))) {
+    if (!isConsumable(info)) {
         return false;
+    }
+    if (info.cures && pet.isSick()) {
+        return true;
+    }
+    const PetStats& stats = pet.stats();
+    // Ignore side bonuses under 10 points: they do not make a wasted main
+    // effect worth the money (energy drink = +5 happiness at full energy).
+    constexpr float kMeaningful = 10.0f;
+    return (info.hunger > kMeaningful && stats.hunger < 99.0f)
+        || (info.happiness > kMeaningful && stats.happiness < 99.0f)
+        || (info.energy > kMeaningful && stats.energy < 99.0f);
+}
+
+UseResult useShopItem(VaiwuPet& pet, ShopItem item)
+{
+    if (!pet.alive()) {
+        return UseResult::RefusedDead;
+    }
+    const ShopItemInfo& info = shopItem(item);
+    if (!isConsumable(info)) {
+        return UseResult::NotApplicable;
+    }
+    if (pet.consumableCount(static_cast<int>(item)) <= 0) {
+        return UseResult::NotOwned;
+    }
+    if (!canUseShopItem(pet, item)) {
+        return UseResult::NotApplicable;
+    }
+    pet.takeConsumable(static_cast<int>(item));
+    applyConsumable(pet, info);
+    return UseResult::Ok;
+}
+
+UseResult buyAndUseShopItem(VaiwuPet& pet, ShopItem item)
+{
+    if (!pet.alive()) {
+        return UseResult::RefusedDead;
+    }
+    const ShopItemInfo& info = shopItem(item);
+    if (!isConsumable(info) || !canUseShopItem(pet, item)) {
+        return UseResult::NotApplicable;
     }
     if (!pet.spendCoins(info.price)) {
-        return false;
+        return UseResult::NoCoins;
     }
-    if (info.equip >= 0) {
-        grantEquip(pet.rpg(), static_cast<EquipItem>(info.equip));
-        normalizeRpg(pet.character(), pet.rpg()); // gear may raise HP/MP maxima
-        return true;
-    }
-    if (info.potion) {
-        // Battle supplies are carried, not consumed on the spot.
-        pet.rpg().potions = pet.rpg().potions >= 99 ? 99 : pet.rpg().potions + 1;
-        return true;
-    }
-    if (info.mpPotion) {
-        pet.rpg().mpPotions = pet.rpg().mpPotions >= 99 ? 99 : pet.rpg().mpPotions + 1;
-        return true;
-    }
-    pet.applyGift(info.hunger, info.happiness, info.energy, info.weightDelta);
-    if (info.cures) {
-        pet.cure();
-    }
-    return true;
+    applyConsumable(pet, info);
+    return UseResult::Ok;
 }
 
 } // namespace vaiwu::game

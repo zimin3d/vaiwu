@@ -429,7 +429,7 @@ void testSaveV3RoundTripAndV2Compat()
     grantEquip(pet.rpg(), EquipItem::SteelSword);
     grantEquip(pet.rpg(), EquipItem::LuckyCharm);
     const std::string saved = pet.serialize();
-    CHECK(saved.rfind("V5 ", 0) == 0);
+    CHECK(saved.rfind("V6 ", 0) == 0);
 
     VaiwuPet loaded;
     CHECK(loaded.deserialize(saved, 0));

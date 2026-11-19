@@ -44,6 +44,12 @@ enum class ActionResult : std::uint8_t {
     TooTired,        // not enough energy to play
 };
 
+// Size of the carried-consumables bag. Shop items 0..8 (food, treats,
+// medicine, energy boosters) are the consumables; the array is indexed by
+// the ShopItem id, so Shop.cpp static_asserts that this bound still covers
+// them. Kept here instead of Shop.hpp to avoid a circular include.
+constexpr int kConsumableSlots = 12;
+
 struct PetStats {
     float hunger{100.0f};      // 0..100, 0 = death
     float happiness{80.0f};    // 0..100
@@ -96,6 +102,14 @@ public:
     // Apply a purchased item's effect (a positive stat gift). weightDelta may
     // be negative (e.g. medicine that also trims weight).
     void applyGift(float hunger, float happiness, float energy, float weightDelta);
+
+    // Carried shop consumables, indexed by `ShopItem` id (0..kConsumableSlots-1).
+    // Buying in the shop fills the bag instead of applying the effect right
+    // away, so an energy drink bought at full energy is not wasted: the player
+    // chooses the moment to use it (see `useShopItem` in Shop.hpp).
+    [[nodiscard]] int consumableCount(int itemId) const;
+    bool addConsumable(int itemId, int amount = 1);
+    bool takeConsumable(int itemId);
 
     // Cure illness: fixes whichever cause is active (raises hunger above the
     // sickness threshold and/or trims excess weight below it), so isSick()
@@ -155,6 +169,7 @@ private:
     std::uint64_t lastTickMs_{0};
     std::uint64_t ageMsRemainder_{0};
     RpgProgress rpg_{};
+    std::uint8_t consumables_[kConsumableSlots]{};
     float rpgRegenPool_{0.0f};     // minutes accumulated toward HP/MP regen
     float wakeGraceMinutes_{0.0f}; // forced sleep suppressed until it hits 0
 };
