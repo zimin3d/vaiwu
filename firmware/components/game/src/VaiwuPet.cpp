@@ -1,7 +1,9 @@
 #include "vaiwu/game/VaiwuPet.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
+#include <utility>
 
 namespace vaiwu::game {
 
@@ -536,16 +538,26 @@ bool VaiwuPet::deserialize(const std::string& data, std::uint64_t nowMs)
     if (charId < 0 || charId >= kCharacterCount || life < 0 || life > 2) {
         return false;
     }
+    if (!std::isfinite(hunger) || !std::isfinite(happiness) || !std::isfinite(energy)
+        || !std::isfinite(discipline) || !std::isfinite(weight)) {
+        return false;
+    }
 
     character_ = static_cast<CharacterId>(charId);
-    name_ = data.substr(nl + 1);
+    std::string loadedName = data.substr(nl + 1);
+    loadedName.erase(std::remove_if(loadedName.begin(), loadedName.end(),
+        [](char c) { return c == '\r' || c == '\n'; }), loadedName.end());
+    if (loadedName.size() > 128U) {
+        loadedName.resize(128U);
+    }
+    name_ = loadedName.empty() ? traitsFor(character_).name : std::move(loadedName);
     stats_.hunger = clamp01(hunger);
     stats_.happiness = clamp01(happiness);
     stats_.energy = clamp01(energy);
     stats_.discipline = clamp01(discipline);
     stats_.weightKg = std::clamp(weight, 1.0f, 99.0f);
     stats_.ageSeconds = age;
-    stats_.coins = coins;
+    stats_.coins = std::min(coins, 99999U);
     life_ = static_cast<LifeState>(life);
     sick_ = sick != 0;
     rpg_ = rpg;

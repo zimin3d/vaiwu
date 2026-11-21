@@ -174,6 +174,13 @@ int xpForNext(int level)
 void normalizeRpg(CharacterId id, RpgProgress& p)
 {
     p.level = clampInt(p.level, 1, 99);
+    p.xp = clampInt(p.xp, 0, 100000);
+    p.statPoints = clampInt(p.statPoints, 0, 300);
+    p.alloc.str = clampInt(p.alloc.str, 0, 500);
+    p.alloc.vit = clampInt(p.alloc.vit, 0, 500);
+    p.alloc.agi = clampInt(p.alloc.agi, 0, 500);
+    p.alloc.mag = clampInt(p.alloc.mag, 0, 500);
+    p.alloc.luck = clampInt(p.alloc.luck, 0, 500);
     const int hpMax = hpMaxFor(id, p);
     const int mpMax = mpMaxFor(id, p);
     p.hp = (p.hp < 0) ? hpMax : clampInt(p.hp, 0, hpMax);
@@ -181,6 +188,8 @@ void normalizeRpg(CharacterId id, RpgProgress& p)
     p.potions = clampInt(p.potions, 0, 99);
     p.mpPotions = clampInt(p.mpPotions, 0, 99);
     p.guardTurns = clampInt(p.guardTurns, 0, 3);
+    p.poisonTurns = clampInt(p.poisonTurns, 0, 10);
+    p.stunTurns = clampInt(p.stunTurns, 0, 10);
     p.equipOwned &= (1U << kEquipItemCount) - 1U;
     for (int slot = 0; slot < kEquipSlotCount; ++slot) {
         const int itemIndex = p.equipped[slot];
