@@ -33,9 +33,9 @@ void testDecayRates()
     VaiwuPet pet;
     pet.startNew(CharacterId::Hina, "Test", 0);
     pet.tick(2 * kMinute); // 2 minutes
-    // hunger: 1%/2min -> -1; energy: 1%/min * 1.3 (Hina) -> -2.6
+    // hunger: 1%/2min -> -1; energy: 0.5%/min * 1.3 (Hina) -> -1.3
     CHECK(std::fabs(pet.stats().hunger - 99.0f) < 0.01f);
-    CHECK(std::fabs(pet.stats().energy - (100.0f - 2.6f)) < 0.05f);
+    CHECK(std::fabs(pet.stats().energy - (100.0f - 1.3f)) < 0.05f);
     // happiness: 1%/1.5min -> -1.333
     CHECK(std::fabs(pet.stats().happiness - (80.0f - 2.0f / 1.5f)) < 0.05f);
     // discipline: softened 1%/10min -> -0.2 (spec 1%/5min made the only stat
@@ -74,17 +74,17 @@ void testForcedSleepAndWake()
     VaiwuPet pet;
     pet.startNew(CharacterId::Aoi, "A", 0);
     std::uint64_t t = 0;
-    // Energy 1%/min -> after 86 min energy <= 15 -> forced sleep.
-    t += 90 * kMinute;
+    // Energy 0.5%/min -> after 170 min energy <= 15 -> forced sleep.
+    t += 172 * kMinute;
     pet.tick(t);
     CHECK(pet.life() == LifeState::Sleeping);
     CHECK(pet.emotion() == Emotion::Sleepy);
     CHECK(pet.feed() == ActionResult::RefusedSleeping);
-    // Aoi sleep regen: 2%/min * 1.5 = 3%/min -> full in ~30 min.
-    t += 40 * kMinute;
+    // Aoi sleep regen: 2.5%/min * 1.5 = 3.75%/min -> full in ~23 min.
+    t += 24 * kMinute;
     pet.tick(t);
     CHECK(pet.life() == LifeState::Awake);
-    CHECK(pet.stats().energy >= 99.0f);
+    CHECK(pet.stats().energy >= 95.0f);
 }
 
 void testWake()
@@ -92,7 +92,7 @@ void testWake()
     VaiwuPet pet;
     pet.startNew(CharacterId::Aoi, "A", 0);
     CHECK(!pet.wake()); // awake: nothing happens
-    pet.tick(90 * kMinute);
+    pet.tick(172 * kMinute);
     CHECK(pet.life() == LifeState::Sleeping);
     const float moodBefore = pet.stats().happiness;
     CHECK(pet.wake());
@@ -125,10 +125,9 @@ void testSicknessAndYukiResistance()
     normal.startNew(CharacterId::Aoi, "", 0);
     VaiwuPet resistant;
     resistant.startNew(CharacterId::Yuki, "", 0);
-    // 185 min -> hunger ~7.5% (awake decay only while awake; both sleep the
-    // same way, so relative comparison is fair).
-    normal.tick(185 * kMinute);
-    resistant.tick(185 * kMinute);
+    // 195 min -> hunger ~8.25% (below normal 10% threshold, above Yuki's 5%).
+    normal.tick(195 * kMinute);
+    resistant.tick(195 * kMinute);
     CHECK(normal.isSick());
     CHECK(!resistant.isSick());
 }
@@ -159,7 +158,7 @@ void testSleepRestoresDiscipline()
 {
     VaiwuPet pet;
     pet.startNew(CharacterId::Rin, "R", 0);
-    // Drive Rin to forced sleep (energy 100 -> 15 at 1%/min = 85 minutes).
+    // Drive Rin to forced sleep (energy 100 -> 15 at 0.5%/min = 170 minutes).
     std::uint64_t now = 0;
     while (pet.life() != LifeState::Sleeping && now < 400ULL * kMinute) {
         now += kMinute;

@@ -122,6 +122,10 @@ public:
     // threshold, so the player always has time to feed or cure her.
     bool wake();
 
+    // Put an awake pet to sleep early (when energy < 90%) so she can recover
+    // energy and discipline without waiting for forced exhaustion.
+    bool sleep();
+
     [[nodiscard]] Emotion emotion() const;
     [[nodiscard]] BodyShape bodyShape() const;
     [[nodiscard]] LifeState life() const { return life_; }

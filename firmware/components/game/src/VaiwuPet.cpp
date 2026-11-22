@@ -9,22 +9,22 @@ namespace vaiwu::game {
 
 namespace {
 // Baseline decay rates, in stat points per minute (spec: hunger 1%/2min,
-// happiness 1%/1.5min, energy 1%/1min, discipline 1%/5min).
+// happiness 1%/1.5min, energy softened to 0.5%/min, discipline 1%/10min).
 constexpr float kHungerPerMin = 1.0f / 2.0f;
 constexpr float kHappinessPerMin = 1.0f / 1.5f;
-constexpr float kEnergyPerMin = 1.0f;
+constexpr float kEnergyPerMin = 0.5f;
 // Discipline: the spec says 1%/5min, but discipline is the only stat without a
 // burst recovery, so the raw spec rate drained the bar to caprice (<20) in
 // 6.7h of wake time. Softened to 1%/10min and sleep now restores +1%/min
 // (see kSleepDisciplineRegenPerMin).
 constexpr float kDisciplinePerMin = 1.0f / 10.0f;
-// While asleep: energy regenerates 1% / 30s, hunger drains at half speed and
-// discipline recovers (1%/min): the "режим" (sleep schedule) is what rebuilds
-// what the awake day erodes.
-constexpr float kSleepRegenPerMin = 2.0f;
+// While asleep: energy regenerates 2.5%/min (~34 min for a full rest), hunger
+// drains at half speed and discipline recovers (1%/min).
+constexpr float kSleepRegenPerMin = 2.5f;
 constexpr float kSleepDisciplineRegenPerMin = 1.0f;
 
 constexpr float kForcedSleepEnergy = 15.0f;
+constexpr float kManualSleepMaxEnergy = 90.0f;
 constexpr float kPlayMinEnergy = 20.0f;
 constexpr float kPlayEnergyCost = 8.0f;
 // After a manual wake-up the pet stays awake this long even while her energy
@@ -78,7 +78,16 @@ void VaiwuPet::tick(std::uint64_t nowMs)
     stats_.ageSeconds += static_cast<std::uint32_t>(ageMsRemainder_ / 1000ULL);
     ageMsRemainder_ %= 1000ULL;
 
-    applyDecay(minutes);
+    // Simulate long offline gaps in 1-minute steps so Awake <-> Sleeping
+    // transitions happen naturally while the app is closed instead of draining
+    // energy to 0% in one jump or sleeping for hours past 100%.
+    float remaining = minutes;
+    while (remaining > 0.0f && life_ != LifeState::Dead) {
+        const float step = remaining > 1.0f ? 1.0f : remaining;
+        applyDecay(step);
+        refreshDerivedState();
+        remaining -= step;
+    }
 
     // Slow out-of-battle HP/MP recovery (2 HP + 1 MP per minute), pooled so
     // 1-second ticks do not truncate to zero.
@@ -88,7 +97,6 @@ void VaiwuPet::tick(std::uint64_t nowMs)
         rpgRegenPool_ = 0.0f;
     }
 
-    refreshDerivedState();
     dirty_ = true;
 }
 
@@ -323,6 +331,17 @@ bool VaiwuPet::wake()
     return true;
 }
 
+bool VaiwuPet::sleep()
+{
+    if (life_ != LifeState::Awake || stats_.energy >= kManualSleepMaxEnergy) {
+        return false;
+    }
+    life_ = LifeState::Sleeping;
+    wakeGraceMinutes_ = 0.0f;
+    dirty_ = true;
+    return true;
+}
+
 Emotion VaiwuPet::emotion() const
 {
     if (life_ == LifeState::Dead) return Emotion::Dead;
@@ -382,6 +401,10 @@ void VaiwuPet::applyGift(float hunger, float happiness, float energy, float weig
     addHappiness(happiness);
     stats_.energy = clamp01(stats_.energy + energy);
     stats_.weightKg = std::clamp(stats_.weightKg + weightDelta, 1.0f, 99.0f);
+    if (life_ == LifeState::Sleeping && stats_.energy >= 100.0f) {
+        life_ = LifeState::Awake;
+        wakeGraceMinutes_ = 0.0f;
+    }
     refreshDerivedState();
     dirty_ = true;
 }
